@@ -4,38 +4,7 @@ namespace ClrHome;
 // TODO: move from conf.xml to catalog.xml
 define('TOKENIZER_CATALOG_URL', 'https://clrhome.org/catalog/conf.xml');
 
-abstract class Enum {
-  public static function getConstList() {
-    static $const_list = null;
-
-    if ($const_list === null) {
-      $const_list = array();
-      $reflection = new \ReflectionClass(static::class);
-
-      while ($reflection !== false) {
-        $const_list = array_merge($reflection->getConstants(), $const_list);
-        $reflection = $reflection->getParentClass();
-      }
-    }
-
-    return $const_list;
-  }
-
-  public static function validate($value) {
-    if (!in_array($value, static::getConstList())) {
-      throw new \InvalidArgumentException(
-        sprintf('Invalid value for %s: %s', static::class, $value)
-      );
-    }
-
-    return $value;
-  }
-}
-
-abstract class Series extends Enum {
-  const TI83 = '**TI83**';
-  const TI83P = '**TI83F*';
-}
+include(__DIR__ . '/common.php');
 
 abstract class Language extends Enum {
   const AXE = 'axe';
@@ -43,14 +12,52 @@ abstract class Language extends Enum {
   const GRAMMER = 'grammer';
 }
 
-class Tokenizer {
-  protected $catalog;
-  protected $inverseCatalog;
+class Program {
+  protected $body = '';
+  protected $catalogFile = __DIR__ . '/catalog.xml';
   protected $language = Language::BASIC;
   protected $series = Series::TI83P;
+  private $catalog;
+  private $inverseCatalog;
 
-  public function __construct($catalog_file = __DIR__ . '/catalog.xml') {
-    if (!file_exists($catalog_file)) {
+  public function setBodyAsChars($chars) {
+    $this->body = $this->tokenize($chars);
+  }
+
+  public function getBodyAsTokens() {
+    return $this->body;
+  }
+
+  public function getCatalogFile() {
+    return $this->catalogFile;
+  }
+
+  public function setCatalogFile($catalog_file) {
+    if ($this->catalogFile !== $catalog_file) {
+      $this->catalogFile = $catalog_file;
+      $this->catalog = null;
+      $this->inverseCatalog = null;
+    }
+  }
+
+  public function getLanguage() {
+    return $this->language;
+  }
+
+  public function setLanguage($language) {
+    $this->language = Language::validate($language);
+  }
+
+  public function getSeries() {
+    return $this->series;
+  }
+
+  public function setSeries($series) {
+    $this->series = Series::validate($series);
+  }
+
+  private function initializeCatalog() {
+    if (!file_exists($this->catalogFile)) {
       $catalog_handle = fopen(TOKENIZER_CATALOG_URL, 'r');
 
       if ($catalog_handle === false) {
@@ -59,19 +66,19 @@ class Tokenizer {
         );
       }
 
-      if (file_put_contents($catalog_file, $catalog_handle) === false) {
+      if (file_put_contents($this->catalogFile, $catalog_handle) === false) {
         throw new \OutOfBoundsException(
-          "Unable to write catalog file at $catalog_file"
+          "Unable to write catalog file at $this->catalogFile"
         );
       }
     }
 
-    $this->catalog = simplexml_load_file($catalog_file);
+    $this->catalog = simplexml_load_file($this->catalogFile);
     $namespaces = $this->catalog->getDocNamespaces();
 
     if ($this->catalog === false) {
       throw new \OutOfBoundsException(
-        "Unable to read catalog file at $catalog_file"
+        "Unable to read catalog file at $this->catalogFile"
       );
     }
 
@@ -108,7 +115,28 @@ class Tokenizer {
     }
   }
 
-  public function tokenize($chars) {
+  private function registerToken(
+    $namespaces,
+    $token,
+    $token_idx,
+    $subtoken_idx = null
+  ) {
+    foreach ($namespaces as $prefix => $namespace) {
+      $id = $token->attributes($prefix !== '' ? $namespace : '')['id'];
+
+      if ($id !== null) {
+        $this->inverseCatalog[":$id"] = chr($token_idx) . (
+          $subtoken_idx !== null ? chr($subtoken_idx) : ''
+        );
+      }
+    }
+  }
+
+  private function tokenize($chars) {
+    if ($this->inverseCatalog === null) {
+      $this->initializeCatalog();
+    }
+
     $tokens = '';
     $chars = str_replace("\xe2\x86\x92", '->', $chars);
     $line_start = 0;
@@ -180,39 +208,6 @@ class Tokenizer {
     }
 
     return $tokens;
-  }
-
-  public function getLanguage() {
-    return $this->language;
-  }
-
-  public function setLanguage($language) {
-    $this->language = Language::validate($language);
-  }
-
-  public function getSeries() {
-    return $this->series;
-  }
-
-  public function setSeries($series) {
-    $this->series = Series::validate($series);
-  }
-
-  private function registerToken(
-    $namespaces,
-    $token,
-    $token_idx,
-    $subtoken_idx = null
-  ) {
-    foreach ($namespaces as $prefix => $namespace) {
-      $id = $token->attributes($prefix !== '' ? $namespace : '')['id'];
-
-      if ($id !== null) {
-        $this->inverseCatalog[":$id"] = chr($token_idx) . (
-          $subtoken_idx !== null ? chr($subtoken_idx) : ''
-        );
-      }
-    }
   }
 }
 ?>
