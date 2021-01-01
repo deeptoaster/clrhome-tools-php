@@ -33,4 +33,9 @@ abstract class Series extends Enum {
   const TI83 = '**TI83**';
   const TI83P = '**TI83F*';
 }
+
+abstract class VariableType extends Enum {
+  const PROGRAM = 0x05;
+  const PROGRAM_LOCKED = 0x06;
+}
 ?>

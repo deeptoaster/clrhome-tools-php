@@ -4,7 +4,7 @@ namespace ClrHome;
 // TODO: move from conf.xml to catalog.xml
 define('TOKENIZER_CATALOG_URL', 'https://clrhome.org/catalog/conf.xml');
 
-include(__DIR__ . '/common.php');
+include(__DIR__ . '/Variable.class.php');
 
 abstract class Language extends Enum {
   const AXE = 'axe';
@@ -12,13 +12,37 @@ abstract class Language extends Enum {
   const GRAMMER = 'grammer';
 }
 
-class Program {
-  protected $body = '';
-  protected $catalogFile = __DIR__ . '/catalog.xml';
-  protected $language = Language::BASIC;
-  protected $series = Series::TI83P;
+class Program extends Variable {
+  private $body = '';
   private $catalog;
+  private $catalogFile = __DIR__ . '/catalog.xml';
+  private $editable = true;
   private $inverseCatalog;
+  private $language = Language::BASIC;
+  private $name;
+
+  final public function getData() {
+    $body = $this->getBodyAsTokens();
+    return pack('va*', strlen($body), $body);
+  }
+
+  public function getName() {
+    return $this->name;
+  }
+
+  public function setName($name) {
+    if (!preg_match('/^([A-Z\[]|theta)([0-9A-Z\[]|theta){0,7}', $name)) {
+      throw new \InvalidArgumentException('Invalid program name');
+    }
+
+    $this->name = str_replace('theta', '[', $name);
+  }
+
+  final public function getType() {
+    return $this->getEditable()
+      ? VariableType::PROGRAM
+      : VariableType::PROGRAM_LOCKED;
+  }
 
   public function getBodyAsChars() {
     return $this->detokenize($this->body);
@@ -36,16 +60,24 @@ class Program {
     $this->body = $tokens;
   }
 
-  public function getCatalogFile() {
+  final public function getCatalogFile() {
     return $this->catalogFile;
   }
 
-  public function setCatalogFile($catalog_file) {
+  final public function setCatalogFile($catalog_file) {
     if ($this->catalogFile !== $catalog_file) {
       $this->catalogFile = $catalog_file;
       $this->catalog = null;
       $this->inverseCatalog = null;
     }
+  }
+
+  public function getEditable() {
+    return $this->editable;
+  }
+
+  public function setEditable($editable) {
+    $this->editable = (bool)$editable;
   }
 
   public function getLanguage() {
@@ -56,20 +88,12 @@ class Program {
     $this->language = Language::validate($language);
   }
 
-  public function getSeries() {
-    return $this->series;
-  }
-
-  public function setSeries($series) {
-    $this->series = Series::validate($series);
-  }
-
   private function detokenize($tokens) {
     if (!isset($this->catalog)) {
       $this->initializeCatalog();
     }
 
-    $namespace = $this->language !== Language::BASIC
+    $namespace = $this->getLanguage() !== Language::BASIC
       ? $this->catalog->getDocNamespaces()
       : '';
     $chars = '';
