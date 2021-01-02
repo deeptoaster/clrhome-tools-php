@@ -3,12 +3,18 @@ namespace ClrHome;
 
 include(__DIR__ . '/common.php');
 
+/**
+ * An enum representing the variable type.
+ */
 abstract class VariableType extends Enum {
   const PROGRAM = 0x05;
   const PROGRAM_LOCKED = 0x06;
   const APPVAR = 0x15;
 }
 
+/**
+ * A TI variable.
+ */
 abstract class Variable {
   private $archived = false;
   private $series = Series::TI83P;
@@ -20,6 +26,10 @@ abstract class Variable {
 
   abstract protected function getType();
 
+  /**
+   * Returns an array of variables constructed from a TI variable file.
+   * @param string $file_name The path of the file to read as a string.
+   */
   final public static function fromFile($file_name) {
     $packed = file_get_contents($file_name);
 
@@ -32,6 +42,10 @@ abstract class Variable {
     return $this->fromString($packed);
   }
 
+  /**
+   * Returns an array of variables constructed from a string.
+   * @param string $packed A string in TI variable file format.
+   */
   final public static function fromString($packed) {
     switch (substr($packed, 0, 11)) {
       case Series::TI83 . "\x1a\x0a\x00":
@@ -116,18 +130,32 @@ abstract class Variable {
     return (ord($string[$offset + 1]) << 8) + ord($string[$offset]);
   }
 
+  /**
+   * Returns whether or not this variable should be archived (`TI83P` only).
+   */
   final public function getArchived() {
     return $this->archived;
   }
 
+  /**
+   * Sets whether or not this variable should be archived (`TI83P` only).
+   * @param bool $archived Whether this variable should be archived.
+   */
   final public function setArchived($archived) {
     $this->archived = (bool)$archived;
   }
 
+  /**
+   * Returns the calculator series this variable should target during export.
+   */
   final public function getSeries() {
     return $this->series;
   }
 
+  /**
+   * Sets the calculator series this variable should target during export.
+   * @param Series $series The calculator series this variable should target.
+   */
   final public function setSeries($series) {
     $this->series = Series::validate($series);
   }
@@ -140,6 +168,12 @@ abstract class Variable {
     $this->version = (int)$version;
   }
 
+  /**
+   * Writes one or more variables to a TI variable file.
+   * @param string $file_name The path of the file to write.
+   * @param string $comment An optional comment to include in the file.
+   * @param array<Variable> $includes Additional variables to include.
+   */
   final public function toFile(
     $file_name,
     $comment = '',
@@ -155,6 +189,11 @@ abstract class Variable {
     }
   }
 
+  /**
+   * Returns one or more variables in TI variable file format as a string.
+   * @param string $comment An optional comment to include in the file.
+   * @param array<Variable> $includes Additional variables to include.
+   */
   final public function toString($comment = '', $includes = array()) {
     $entries = array_reduce($includes, function($entries, $include) {
       return $entries . $include->getEntry($this->series);

@@ -12,6 +12,9 @@ abstract class Language extends Enum {
   const GRAMMER = 'grammer';
 }
 
+/**
+ * A TI program.
+ */
 class Program extends Variable {
   private $body = '';
   private $catalog;
@@ -21,15 +24,22 @@ class Program extends Variable {
   private $language = Language::BASIC;
   private $name;
 
-  final public function getData() {
+  final protected function getData() {
     $body = $this->getBody();
     return pack('va*', strlen($body), $body);
   }
 
+  /**
+   * Returns the program name.
+   */
   public function getName() {
     return $this->name;
   }
 
+  /**
+   * Sets the program name.
+   * @param string $name The program name.
+   */
   public function setName($name) {
     if (!preg_match('/^([A-Z\[]|theta)([0-9A-Z\[]|theta)*/', $name)) {
       throw new \InvalidArgumentException("Invalid program name $name");
@@ -38,32 +48,53 @@ class Program extends Variable {
     $this->name = substr(str_replace('theta', '[', $name), 0, 8);
   }
 
-  final public function getType() {
+  final protected function getType() {
     return $this->getEditable()
       ? VariableType::PROGRAM
       : VariableType::PROGRAM_LOCKED;
   }
 
+  /**
+   * Returns the program body as a token string.
+   */
   public function getBody() {
     return $this->body;
   }
 
+  /**
+   * Sets the program body as a token string.
+   * @param string $tokens The program body as a token string.
+   */
   public function setBody($tokens) {
     $this->body = $tokens;
   }
 
+  /**
+   * Returns the program body detokenized to ASCII.
+   */
   public function getBodyAsChars() {
     return $this->detokenize($this->body);
   }
 
+  /**
+   * Sets the program body by tokenizing an ASCII string.
+   * @param string $chars The program body as an ASCII string.
+   */
   public function setBodyAsChars($chars) {
     $this->body = $this->tokenize($chars);
   }
 
+  /**
+   * Returns the path of the catalog file to use for tokenizing.
+   */
   final public function getCatalogFile() {
     return $this->catalogFile;
   }
 
+  /**
+   * Sets the path of the catalog file to use for tokenizing.
+   * @param The path of the catalog file to use.
+   */
   final public function setCatalogFile($catalog_file) {
     if ($this->catalogFile !== $catalog_file) {
       $this->catalogFile = $catalog_file;
@@ -72,18 +103,32 @@ class Program extends Variable {
     }
   }
 
+  /**
+   * Returns whether this program should be editable on the calculator.
+   */
   public function getEditable() {
     return $this->editable;
   }
 
+  /**
+   * Sets whether this program should be editable on the calculator.
+   * @param bool $editable Whether this program should be editable.
+   */
   public function setEditable($editable) {
     $this->editable = (bool)$editable;
   }
 
+  /**
+   * Returns the language to target while tokenizing.
+   */
   public function getLanguage() {
     return $this->language;
   }
 
+  /**
+   * Sets the language to target while tokenizing.
+   * @param Language $language The language to target while tokenizing.
+   */
   public function setLanguage($language) {
     $this->language = Language::validate($language);
   }
