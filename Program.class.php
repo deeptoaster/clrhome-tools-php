@@ -4,7 +4,7 @@ namespace ClrHome;
 // TODO: move from conf.xml to catalog.xml
 define('TOKENIZER_CATALOG_URL', 'https://clrhome.org/catalog/conf.xml');
 
-include(__DIR__ . '/Variable.class.php');
+include_once(__DIR__ . '/Variable.class.php');
 
 abstract class Language extends Enum {
   const AXE = 'axe';
@@ -22,7 +22,7 @@ class Program extends Variable {
   private $name;
 
   final public function getData() {
-    $body = $this->getBodyAsTokens();
+    $body = $this->getBody();
     return pack('va*', strlen($body), $body);
   }
 
@@ -31,11 +31,11 @@ class Program extends Variable {
   }
 
   public function setName($name) {
-    if (!preg_match('/^([A-Z\[]|theta)([0-9A-Z\[]|theta){0,7}', $name)) {
-      throw new \InvalidArgumentException('Invalid program name');
+    if (!preg_match('/^([A-Z\[]|theta)([0-9A-Z\[]|theta)*/', $name)) {
+      throw new \InvalidArgumentException("Invalid program name $name");
     }
 
-    $this->name = str_replace('theta', '[', $name);
+    $this->name = substr(str_replace('theta', '[', $name), 0, 8);
   }
 
   final public function getType() {
@@ -44,20 +44,20 @@ class Program extends Variable {
       : VariableType::PROGRAM_LOCKED;
   }
 
+  public function getBody() {
+    return $this->body;
+  }
+
+  public function setBody($tokens) {
+    $this->body = $tokens;
+  }
+
   public function getBodyAsChars() {
     return $this->detokenize($this->body);
   }
 
   public function setBodyAsChars($chars) {
     $this->body = $this->tokenize($chars);
-  }
-
-  public function getBodyAsTokens() {
-    return $this->body;
-  }
-
-  public function setBodyAsTokens($tokens) {
-    $this->body = $tokens;
   }
 
   final public function getCatalogFile() {
@@ -191,13 +191,13 @@ class Program extends Variable {
       $catalog_handle = fopen(TOKENIZER_CATALOG_URL, 'r');
 
       if ($catalog_handle === false) {
-        throw new \OutOfBoundsException(
+        throw new \UnderflowException(
           'Unable to download catalog file at ' . TOKENIZER_CATALOG_URL
         );
       }
 
       if (file_put_contents($this->catalogFile, $catalog_handle) === false) {
-        throw new \OutOfBoundsException(
+        throw new \UnderflowException(
           "Unable to write catalog file at $this->catalogFile"
         );
       }
@@ -207,7 +207,7 @@ class Program extends Variable {
     $namespaces = $this->catalog->getDocNamespaces();
 
     if ($this->catalog === false) {
-      throw new \OutOfBoundsException(
+      throw new \UnderflowException(
         "Unable to read catalog file at $this->catalogFile"
       );
     }

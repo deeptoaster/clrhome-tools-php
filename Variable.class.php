@@ -6,6 +6,7 @@ include(__DIR__ . '/common.php');
 abstract class VariableType extends Enum {
   const PROGRAM = 0x05;
   const PROGRAM_LOCKED = 0x06;
+  const APPVAR = 0x15;
 }
 
 abstract class Variable {
