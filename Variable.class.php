@@ -126,6 +126,52 @@ abstract class Variable {
     return $variables;
   }
 
+  protected static function floatingPointToNumber($packed) {
+    if (ord($packed[0]) & 0x02 !== 0) {
+      return array(null, null);
+    }
+
+    $complex = strlen($packed) > 9 && ord($packed[9]) & 0x0c !== 0
+      ? self::floatingPointToNumber(substr($packed, 9))
+      : array(null);
+    $unpacked = unpack('C2exponent/H14mantissa', $packed);
+    $real =
+        ($unpacked['mantissa'][0] . '.' . substr($unpacked['mantissa'], 1)) *
+        pow(10, $unpacked['exponent2'] - 0x80);
+
+    return array(
+      $unpacked['exponent1'] & 0x80 !== 0 ? -$real : $real,
+      $complex[0]
+    );
+  }
+
+  protected static function numberToFloatingPoint(
+    $real = null,
+    $complex = null
+  ) {
+    if ($real === null) {
+      return pack('C9', 0x02, 0, 0, 0, 0, 0, 0, 0, 0);
+    }
+
+    $exponent = $real !== 0 ? (int)log10($real) : 0;
+
+    $mantissa = str_pad(
+      str_replace('.', '', (string)($real / pow(10, $exponent))),
+      14,
+      '0'
+    );
+
+    $packed = pack('C2H14', $real < 0 ? 0x80 : 0x00, $exp + 0x80, $mantissa);
+
+    if ($complex !== null) {
+      $packed .= self::numberToFloatingPoint($complex);
+      $packed[0] = chr(ord($packed[0]) | 0x0c);
+      $packed[9] = chr(ord($packed[9]) | 0x0c);
+    }
+
+    return $packed;
+  }
+
   private static function readWord($string, $offset) {
     return (ord($string[$offset + 1]) << 8) + ord($string[$offset]);
   }
