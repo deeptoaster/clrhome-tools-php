@@ -7,8 +7,10 @@ include(__DIR__ . '/common.php');
  * An enum representing the variable type.
  */
 abstract class VariableType extends Enum {
+  const REAL = 0x00;
   const PROGRAM = 0x05;
   const PROGRAM_LOCKED = 0x06;
+  const COMPLEX = 0x0c;
   const APPVAR = 0x15;
 }
 
@@ -65,13 +67,15 @@ abstract class Variable {
     while ($entry_start < $packed_length) {
       $header_length = self::readWord($packed, $entry_start);
 
-      if ($header_length !== 11 || $header_length !== 13) {
+      if ($header_length !== 11 && $header_length !== 13) {
         throw new \OutOfBoundsException('Unrecognized header format');
       }
 
       $buffer_length = self::readWord($packed, $entry_start + 2);
 
-      if ($entry_start + $header_length + $buffer_length + 4 > strlen($packed)) {
+      if (
+        $entry_start + $header_length + $buffer_length + 4 > strlen($packed)
+      ) {
         throw new \OutOfBoundsException(
           'Variable entry length exceeds file length'
         );
@@ -91,15 +95,28 @@ abstract class Variable {
       $data = substr($packed, $entry_start + $header_length + 4, $data_length);
 
       switch ($type) {
+        case VariableType::APPVAR:
+          $variable = new AppVar();
+          $variable->setName($name);
+          $variable->setData($data);
+          break;
+        case VariableType::COMPLEX:
+        case VariableType::REAL:
+          $variable = new Number();
+          $variable->setName($name);
+          list($real, $imaginary) = self::floatingPointToNumber($data);
+          $variable->setReal($real);
+          $variable->setImaginary($imaginary);
+          break;
         case VariableType::PROGRAM:
         case VariableType::PROGRAM_LOCKED:
           $variable = new Program();
+          $variable->setName($name);
 
           if ($type === VariableType::PROGRAM_LOCKED) {
             $variable->setEditable(false);
           }
 
-          $variable->setName($name);
           $tokens_length = self::readWord($data, 0);
 
           if ($tokens_length + 2 > $data_length) {
@@ -121,17 +138,18 @@ abstract class Variable {
       }
 
       $variables[] = $variable;
+      $entry_start += $header_length + $buffer_length + 4;
     }
 
     return $variables;
   }
 
-  protected static function floatingPointToNumber($packed) {
+  final protected static function floatingPointToNumber($packed) {
     if (ord($packed[0]) & 0x02 !== 0) {
       return array(null, null);
     }
 
-    $complex = strlen($packed) > 9 && ord($packed[9]) & 0x0c !== 0
+    $imaginary = strlen($packed) > 9 && (ord($packed[9]) & 0x0c) !== 0
       ? self::floatingPointToNumber(substr($packed, 9))
       : array(null);
     $unpacked = unpack('C2exponent/H14mantissa', $packed);
@@ -141,13 +159,13 @@ abstract class Variable {
 
     return array(
       $unpacked['exponent1'] & 0x80 !== 0 ? -$real : $real,
-      $complex[0]
+      $imaginary[0]
     );
   }
 
-  protected static function numberToFloatingPoint(
+  final protected static function numberToFloatingPoint(
     $real = null,
-    $complex = null
+    $imaginary = null
   ) {
     if ($real === null) {
       return pack('C9', 0x02, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -161,10 +179,15 @@ abstract class Variable {
       '0'
     );
 
-    $packed = pack('C2H14', $real < 0 ? 0x80 : 0x00, $exp + 0x80, $mantissa);
+    $packed = pack(
+      'C2H14',
+      $real < 0 ? 0x80 : 0x00,
+      $exponent + 0x80,
+      $mantissa
+    );
 
-    if ($complex !== null) {
-      $packed .= self::numberToFloatingPoint($complex);
+    if ($imaginary !== null) {
+      $packed .= self::numberToFloatingPoint($imaginary);
       $packed[0] = chr(ord($packed[0]) | 0x0c);
       $packed[9] = chr(ord($packed[9]) | 0x0c);
     }

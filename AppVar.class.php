@@ -7,12 +7,15 @@ include_once(__DIR__ . '/Variable.class.php');
  * A TI appvar.
  */
 class AppVar extends Variable {
-  private $body = '';
+  private $data = '';
   private $name;
 
   final public function getData() {
-    $body = $this->getBody();
-    return pack('va*', strlen($body), $body);
+    return $this->data;
+  }
+
+  public function setData($data) {
+    $this->data = $data;
   }
 
   /**
@@ -32,21 +35,6 @@ class AppVar extends Variable {
 
   final public function getType() {
     return VariableType::APPVAR;
-  }
-
-  /**
-   * Returns the appvar content.
-   */
-  public function getBody() {
-    return $this->body;
-  }
-
-  /**
-   * Sets the appvar content.
-   * @param string $body The appvar content.
-   */
-  public function setBody($body) {
-    $this->body = $body;
   }
 }
 ?>
