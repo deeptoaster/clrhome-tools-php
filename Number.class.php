@@ -11,20 +11,29 @@ class Number extends Variable {
   private $name;
   private $real = null;
 
+  final protected static function fromEntry($type, $name, $data) {
+    $number = new static();
+    $number->setName($name);
+    list($real, $imaginary) = self::floatingPointToNumber($data);
+    $number->setReal($real);
+    $number->setImaginary($imaginary);
+    return $number;
+  }
+
   final public function getData() {
     return parent::numberToFloatingPoint($this->real, $this->imaginary);
   }
 
   /**
-   * Returns the appvar name as a character string.
+   * Returns the variable name as a single token.
    */
   public function getName() {
-    return $this->name;
+    return $this->name === '[' ? 'theta' : $this->name;
   }
 
   /**
-   * Sets the appvar name as a character string.
-   * @param string $name The appvar name as a character string.
+   * Sets the variable name as a single token.
+   * @param string $name The variable name as a single token.
    */
   public function setName($name) {
     if (!preg_match('/^([A-Z\[]|theta)$/', $name)) {
@@ -37,7 +46,7 @@ class Number extends Variable {
   }
 
   final public function getType() {
-    return $this->imaginary !== null
+    return $this->imaginary !== null && $this->imaginary !== 0
       ? VariableType::COMPLEX
       : VariableType::REAL;
   }

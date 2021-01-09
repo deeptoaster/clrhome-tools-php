@@ -8,9 +8,11 @@ include(__DIR__ . '/common.php');
  */
 abstract class VariableType extends Enum {
   const REAL = 0x00;
+  const LIST_REAL = 0x01;
   const PROGRAM = 0x05;
   const PROGRAM_LOCKED = 0x06;
   const COMPLEX = 0x0c;
+  const LIST_COMPLEX = 0x0d;
   const APPVAR = 0x15;
 }
 
@@ -21,6 +23,8 @@ abstract class Variable {
   private $archived = false;
   private $series = Series::TI83P;
   private $version = 0;
+
+  abstract protected static function fromEntry($type, $name, $data);
 
   abstract protected function getData();
 
@@ -96,36 +100,15 @@ abstract class Variable {
 
       switch ($type) {
         case VariableType::APPVAR:
-          $variable = new AppVar();
-          $variable->setName($name);
-          $variable->setData($data);
+          $variable = AppVar::fromEntry($type, $name, $data);
           break;
         case VariableType::COMPLEX:
         case VariableType::REAL:
-          $variable = new Number();
-          $variable->setName($name);
-          list($real, $imaginary) = self::floatingPointToNumber($data);
-          $variable->setReal($real);
-          $variable->setImaginary($imaginary);
+          $variable = Number::fromEntry($type, $name, $data);
           break;
         case VariableType::PROGRAM:
         case VariableType::PROGRAM_LOCKED:
-          $variable = new Program();
-          $variable->setName($name);
-
-          if ($type === VariableType::PROGRAM_LOCKED) {
-            $variable->setEditable(false);
-          }
-
-          $tokens_length = self::readWord($data, 0);
-
-          if ($tokens_length + 2 > $data_length) {
-            throw new \OutOfBoundsException(
-              'Program body length exceeds variable data length'
-            );
-          }
-
-          $variable->setBody(substr($data, 2, $tokens_length));
+          $variable = Program::fromEntry($type, $name, $data);
           break;
         default:
           $variable = null;
@@ -165,7 +148,8 @@ abstract class Variable {
 
   final protected static function numberToFloatingPoint(
     $real = null,
-    $imaginary = null
+    $imaginary = null,
+    $forceComplex = false;
   ) {
     if ($real === null) {
       return pack('C9', 0x02, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -186,8 +170,9 @@ abstract class Variable {
       $mantissa
     );
 
-    if ($imaginary !== null) {
-      $packed .= self::numberToFloatingPoint($imaginary);
+    if ($imaginary !== null && $imaginary !== 0 || $forceComplex) {
+      $packed .=
+          self::numberToFloatingPoint($imaginary !== null ? $imaginary : 0);
       $packed[0] = chr(ord($packed[0]) | 0x0c);
       $packed[9] = chr(ord($packed[9]) | 0x0c);
     }

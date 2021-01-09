@@ -24,6 +24,26 @@ class Program extends Variable {
   private $language = Language::BASIC;
   private $name;
 
+  final protected static function fromEntry($type, $name, $data) {
+    $program = new static();
+    $program->setName($name);
+
+    if ($type === VariableType::PROGRAM_LOCKED) {
+      $program->setEditable(false);
+    }
+
+    $tokens_length = self::readWord($data, 0);
+
+    if ($tokens_length + 2 > strlen($data)) {
+      throw new \OutOfBoundsException(
+        'Program body length exceeds variable data length'
+      );
+    }
+
+    $program->setBody(substr($data, 2, $tokens_length));
+    return $program;
+  }
+
   final protected function getData() {
     $body = $this->getBody();
     return pack('va*', strlen($body), $body);
@@ -33,12 +53,12 @@ class Program extends Variable {
    * Returns the program name.
    */
   public function getName() {
-    return $this->name;
+    return str_replace('[', 'theta', $this->name);
   }
 
   /**
-   * Sets the program name.
-   * @param string $name The program name.
+   * Sets the program name as a token string.
+   * @param string $name The program name as a token string.
    */
   public function setName($name) {
     if (!preg_match('/^([A-Z\[]|theta)([0-9A-Z\[]|theta)*/', $name)) {

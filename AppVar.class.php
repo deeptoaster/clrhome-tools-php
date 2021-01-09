@@ -10,6 +10,13 @@ class AppVar extends Variable {
   private $data = '';
   private $name;
 
+  final protected static function fromEntry($type, $name, $data) {
+    $appvar = new static();
+    $appvar->setName($name);
+    $appvar->setData($data);
+    return $appvar;
+  }
+
   final public function getData() {
     return $this->data;
   }
