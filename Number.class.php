@@ -21,7 +21,7 @@ class Number extends Variable {
   }
 
   /**
-   * Returns the variable name as a single token.
+   * Returns the variable name as a single token detokenized to ASCII.
    */
   final public function getName() {
     return isset($this->name)
@@ -30,8 +30,8 @@ class Number extends Variable {
   }
 
   /**
-   * Sets the variable name as a single token.
-   * @param string $name The variable name as a single token.
+   * Sets the variable name as a single token as an ASCII string.
+   * @param string $name The variable name as an ASCII string.
    */
   final public function setName($name) {
     if (!preg_match('/^([A-Z\[]|theta)$/', $name)) {

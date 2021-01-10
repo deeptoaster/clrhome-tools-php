@@ -2,7 +2,7 @@
 namespace ClrHome;
 
 // TODO: move from conf.xml to catalog.xml
-define('TOKENIZER_CATALOG_URL', 'https://clrhome.org/catalog/conf.xml');
+define('PROGRAM_CATALOG_URL', 'https://clrhome.org/catalog/conf.xml');
 
 include_once(__DIR__ . '/Variable.class.php');
 
@@ -28,6 +28,10 @@ class Program extends Variable {
     $program = new static();
     $program->name = $name;
 
+    if (strlen($data) < 2) {
+      throw new \OutOfBoundsException('Program contents not found');
+    }
+
     if ($type === VariableType::PROGRAM_LOCKED) {
       $program->setEditable(false);
     }
@@ -45,15 +49,15 @@ class Program extends Variable {
   }
 
   /**
-   * Returns the program name.
+   * Returns the program name detokenized to ASCII.
    */
   final public function getName() {
     return isset($this->name) ? str_replace('[', 'theta', $this->name) : null;
   }
 
   /**
-   * Sets the program name as a token string.
-   * @param string $name The program name as a token string.
+   * Sets the program name as an ASCII string.
+   * @param string $name The program name as an ASCII string.
    */
   final public function setName($name) {
     if (!preg_match('/^([A-Z\[]|theta)([0-9A-Z\[]|theta)*$/', $name)) {
@@ -253,11 +257,11 @@ class Program extends Variable {
 
   private function initializeCatalog() {
     if (!file_exists($this->catalogFile)) {
-      $catalog_handle = fopen(TOKENIZER_CATALOG_URL, 'r');
+      $catalog_handle = fopen(PROGRAM_CATALOG_URL, 'r');
 
       if ($catalog_handle === false) {
         throw new \UnderflowException(
-          'Unable to download catalog file at ' . TOKENIZER_CATALOG_URL
+          'Unable to download catalog file at ' . PROGRAM_CATALOG_URL
         );
       }
 

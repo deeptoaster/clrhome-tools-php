@@ -12,14 +12,28 @@ class ListVariable extends Variable implements \ArrayAccess {
 
   final protected static function fromEntry($type, $name, $data) {
     $list = new static();
-    $list->name = $name;
+    $list->name = str_pad($name, 2, chr(0x00));
+
+    if (strlen($data) < 2) {
+      throw new \OutOfBoundsException('List contents not found');
+    }
+
     $list_length = parent::readWord($data, 0);
+    $number_length = $type === VariableType::LIST_COMPLEX
+      ? VARIABLE_REAL_LENGTH * 2
+      : VARIABLE_REAL_LENGTH;
+
+    if ($list_length * $number_length + 2 > strlen($data)) {
+      throw new \OutOfBoundsException(
+        'List length exceeds variable data length'
+      );
+    }
 
     $list->setElements(array_map(
       array(parent::class, 'floatingPointToNumber'),
       str_split(
-        substr($data, 2),
-        $type === VariableType::LIST_COMPLEX ? 18 : 9
+        substr($data, 2, $list_length * VARIABLE_REAL_LENGTH),
+        $number_length
       )
     ));
 
@@ -27,20 +41,18 @@ class ListVariable extends Variable implements \ArrayAccess {
   }
 
   /**
-   * Returns the list name as a token string.
+   * Returns the list name detokenized to ASCII.
    */
   final public function getName() {
     return isset($this->name)
-      ? strlen($this->name) >= 2
-        ? ord($this->name[1]) < 0x06
-          ? 'L' . (string)(ord($this->name[1]) + 1)
-          : '|L' . str_replace('[', 'theta', substr($this->name, 1))
-        : 'L1'
+      ? ord($this->name[1]) < 0x06
+        ? 'L' . (string)(ord($this->name[1]) + 1)
+        : '|L' . str_replace('[', 'theta', substr($this->name, 1))
       : null;
   }
 
   /**
-   * Sets the list name as a token string.
+   * Sets the list name as an ASCII string.
    * @param string $name Either 'L1' through 'L6' or a name starting with '|L'.
    */
   final public function setName($name) {
@@ -69,6 +81,10 @@ class ListVariable extends Variable implements \ArrayAccess {
   }
 
   final protected function getData() {
+    if (count($this->elements) === 0) {
+      throw new \BadFunctionCallException('List must not be empty at export');
+    }
+
     $complex = $this->getType() === VariableType::LIST_COMPLEX;
 
     return array_reduce($this->elements, function($data, $element) {
@@ -82,7 +98,7 @@ class ListVariable extends Variable implements \ArrayAccess {
 
   public function offsetExists($index) {
     self::validateIndex($index);
-    return $index === (int)$index && $index < count($this->elements);
+    return $index < count($this->elements);
   }
 
   public function offsetGet($index) {
@@ -119,8 +135,8 @@ class ListVariable extends Variable implements \ArrayAccess {
       }
 
       $this->elements[$index] = array(
-        array_key_exists(0, $value) ? $value[0] : null,
-        array_key_exists(1, $value) ? $value[1] : null
+        isset($value[0]) ? $value[0] : null,
+        isset($value[1]) ? $value[1] : null
       );
     } else {
       throw new \InvalidArgumentException(

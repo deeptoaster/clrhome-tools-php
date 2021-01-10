@@ -1,6 +1,8 @@
 <?
 namespace ClrHome;
 
+define('VARIABLE_REAL_LENGTH', 9);
+
 include(__DIR__ . '/common.php');
 
 /**
@@ -9,6 +11,7 @@ include(__DIR__ . '/common.php');
 abstract class VariableType extends Enum {
   const REAL = 0x00;
   const LIST_REAL = 0x01;
+  const MATRIX = 0x02;
   const PROGRAM = 0x05;
   const PROGRAM_LOCKED = 0x06;
   const COMPLEX = 0x0c;
@@ -110,6 +113,9 @@ abstract class Variable {
         case VariableType::LIST_REAL:
           $variable = ListVariable::fromEntry($type, $name, $data);
           break;
+        case VariableType::MATRIX:
+          $variable = Matrix::fromEntry($type, $name, $data);
+          break;
         case VariableType::PROGRAM:
         case VariableType::PROGRAM_LOCKED:
           $variable = Program::fromEntry($type, $name, $data);
@@ -136,8 +142,10 @@ abstract class Variable {
       return array(null, null);
     }
 
-    $imaginary = strlen($packed) > 9 && (ord($packed[9]) & 0x0c) !== 0
-      ? self::floatingPointToNumber(substr($packed, 9))
+    $imaginary =
+        strlen($packed) > VARIABLE_REAL_LENGTH &&
+        (ord($packed[VARIABLE_REAL_LENGTH]) & 0x0c) !== 0
+      ? self::floatingPointToNumber(substr($packed, VARIABLE_REAL_LENGTH))
       : array(null);
     $unpacked = unpack('C2exponent/H14mantissa', $packed);
     $real =
@@ -178,7 +186,8 @@ abstract class Variable {
       $packed .=
           self::numberToFloatingPoint($imaginary !== null ? $imaginary : 0);
       $packed[0] = chr(ord($packed[0]) | 0x0c);
-      $packed[9] = chr(ord($packed[9]) | 0x0c);
+      $packed[VARIABLE_REAL_LENGTH] =
+          chr(ord($packed[VARIABLE_REAL_LENGTH]) | 0x0c);
     }
 
     return $packed;

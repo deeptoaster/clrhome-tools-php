@@ -15,6 +15,22 @@ The easiest way to use clrhome-tools-php is simply to clone the repository
 No fancy package managers here.
 
 
+Quick Start: Lists
+------------------
+
+    <?php
+    include(__DIR__ . '/ListVariable.class.php');
+
+    $list = new \ClrHome\ListVariable();
+    $list->setElements(array(4, array(5, 6), 3));
+    $list\[\] = 1;
+    $list\[\] = array(2, 3);
+    $list\[\] = array(0);
+    $list->setName('L1');
+    $list->toFile('L1.8xl');
+    ?>
+
+
 Quick Start: Programs
 ---------------------
 
