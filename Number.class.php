@@ -20,14 +20,10 @@ class Number extends Variable {
     return $number;
   }
 
-  final public function getData() {
-    return parent::numberToFloatingPoint($this->real, $this->imaginary);
-  }
-
   /**
    * Returns the variable name as a single token.
    */
-  public function getName() {
+  final public function getName() {
     return isset($this->name)
       ? $this->name === '[' ? 'theta' : $this->name
       : null;
@@ -37,7 +33,7 @@ class Number extends Variable {
    * Sets the variable name as a single token.
    * @param string $name The variable name as a single token.
    */
-  public function setName($name) {
+  final public function setName($name) {
     if (!preg_match('/^([A-Z\[]|theta)$/', $name)) {
       throw new \InvalidArgumentException(
         "Name $name must be a single uppercase letter or theta"
@@ -51,6 +47,10 @@ class Number extends Variable {
     return $this->imaginary !== null && $this->imaginary !== 0
       ? VariableType::COMPLEX
       : VariableType::REAL;
+  }
+
+  final protected function getData() {
+    return parent::numberToFloatingPoint($this->real, $this->imaginary);
   }
 
   /**

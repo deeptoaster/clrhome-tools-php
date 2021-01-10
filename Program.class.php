@@ -44,15 +44,10 @@ class Program extends Variable {
     return $program;
   }
 
-  final protected function getData() {
-    $body = $this->getBody();
-    return pack('va*', strlen($body), $body);
-  }
-
   /**
    * Returns the program name.
    */
-  public function getName() {
+  final public function getName() {
     return isset($this->name) ? str_replace('[', 'theta', $this->name) : null;
   }
 
@@ -60,7 +55,7 @@ class Program extends Variable {
    * Sets the program name as a token string.
    * @param string $name The program name as a token string.
    */
-  public function setName($name) {
+  final public function setName($name) {
     if (!preg_match('/^([A-Z\[]|theta)([0-9A-Z\[]|theta)*$/', $name)) {
       throw new \InvalidArgumentException("Invalid program name $name");
     }
@@ -68,10 +63,15 @@ class Program extends Variable {
     $this->name = substr(str_replace('theta', '[', $name), 0, 8);
   }
 
-  final protected function getType() {
+  final public function getType() {
     return $this->getEditable()
       ? VariableType::PROGRAM
       : VariableType::PROGRAM_LOCKED;
+  }
+
+  final protected function getData() {
+    $body = $this->getBody();
+    return pack('va*', strlen($body), $body);
   }
 
   /**

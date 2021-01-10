@@ -26,22 +26,10 @@ class ListVariable extends Variable implements \ArrayAccess {
     return $list;
   }
 
-  final public function getData() {
-    $complex = $this->getType() === VariableType::LIST_COMPLEX;
-
-    return array_reduce($this->elements, function($data, $element) {
-      return $data . parent::numberToFloatingPoint(
-        $element[0],
-        $element[1],
-        $complex
-      );
-    }, pack('v', count($this->elements)));
-  }
-
   /**
    * Returns the list name as a token string.
    */
-  public function getName() {
+  final public function getName() {
     return isset($this->name)
       ? strlen($this->name) >= 2
         ? ord($this->name[1]) < 0x06
@@ -55,7 +43,7 @@ class ListVariable extends Variable implements \ArrayAccess {
    * Sets the list name as a token string.
    * @param string $name Either 'L1' through 'L6' or a name starting with '|L'.
    */
-  public function setName($name) {
+  final public function setName($name) {
     if (!preg_match('/^(L[1-6]|\|L([A-Z\[]|theta)([0-9A-Z\[]|theta)*)$/', $name)) {
       throw new \InvalidArgumentException("Invalid list name $name");
     }
@@ -78,6 +66,18 @@ class ListVariable extends Variable implements \ArrayAccess {
     return $complex
       ? VariableType::LIST_COMPLEX
       : VariableType::LIST_REAL;
+  }
+
+  final protected function getData() {
+    $complex = $this->getType() === VariableType::LIST_COMPLEX;
+
+    return array_reduce($this->elements, function($data, $element) {
+      return $data . parent::numberToFloatingPoint(
+        $element[0],
+        $element[1],
+        $complex
+      );
+    }, pack('v', count($this->elements)));
   }
 
   public function offsetExists($index) {
@@ -162,4 +162,3 @@ class ListVariable extends Variable implements \ArrayAccess {
   }
 }
 ?>
-

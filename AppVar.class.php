@@ -17,7 +17,7 @@ class AppVar extends Variable {
     return $appvar;
   }
 
-  final public function getData() {
+  public function getData() {
     return $this->data;
   }
 
@@ -28,7 +28,7 @@ class AppVar extends Variable {
   /**
    * Returns the appvar name as a character string.
    */
-  public function getName() {
+  final public function getName() {
     return isset($this->name) ? $this->name : null;
   }
 
@@ -36,7 +36,7 @@ class AppVar extends Variable {
    * Sets the appvar name as a character string.
    * @param string $name The appvar name as a character string.
    */
-  public function setName($name) {
+  final public function setName($name) {
     $this->name = substr($name, 0, 8);
   }
 

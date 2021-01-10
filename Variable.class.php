@@ -26,11 +26,11 @@ abstract class Variable {
 
   abstract protected static function fromEntry($type, $name, $data);
 
+  abstract public function getName();
+
+  abstract public function getType();
+
   abstract protected function getData();
-
-  abstract protected function getName();
-
-  abstract protected function getType();
 
   /**
    * Returns an array of variables constructed from a TI variable file.
