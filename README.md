@@ -23,11 +23,39 @@ Quick Start: Lists
 
     $list = new \ClrHome\ListVariable();
     $list->setElements(array(4, array(5, 6), 3));
-    $list\[\] = 1;
-    $list\[\] = array(2, 3);
-    $list\[\] = array(0);
+    $list[] = 1;
+    $list[] = array(2, 3);
+    $list[] = array(0);
     $list->setName('L1');
     $list->toFile('L1.8xl');
+    ?>
+
+
+Quick Start: Matrices
+------------------
+
+    <?php
+    include(__DIR__ . '/Matrix.class.php');
+
+    $matrix = new \ClrHome\Matrix();
+    $matrix->setElements(array(array(1, 2, 3), array(4, 5, 6)));
+    $matrix['3,2'] = 12;
+    $matrix->setName('[A]');
+    $matrix->toFile('A.8xl');
+    ?>
+
+
+Quick Start: Numbers
+------------------
+
+    <?php
+    include(__DIR__ . '/Number.class.php');
+
+    $number = new \ClrHome\Number();
+    $number->setReal(cos(M_PI / 4));
+    $number->setImaginary(sin(M_PI / 4));
+    $number->setName('theta');
+    $number->toFile('theta.8xl');
     ?>
 
 
