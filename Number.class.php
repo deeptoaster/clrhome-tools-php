@@ -13,8 +13,8 @@ class Number extends Variable {
 
   final protected static function fromEntry($type, $name, $data) {
     $number = new static();
-    $number->setName($name);
-    list($real, $imaginary) = self::floatingPointToNumber($data);
+    $number->name = $name;
+    list($real, $imaginary) = parent::floatingPointToNumber($data);
     $number->setReal($real);
     $number->setImaginary($imaginary);
     return $number;
@@ -28,7 +28,9 @@ class Number extends Variable {
    * Returns the variable name as a single token.
    */
   public function getName() {
-    return $this->name === '[' ? 'theta' : $this->name;
+    return isset($this->name)
+      ? $this->name === '[' ? 'theta' : $this->name
+      : null;
   }
 
   /**
@@ -38,7 +40,7 @@ class Number extends Variable {
   public function setName($name) {
     if (!preg_match('/^([A-Z\[]|theta)$/', $name)) {
       throw new \InvalidArgumentException(
-        "Name $name must be a single uppercase letter or theta."
+        "Name $name must be a single uppercase letter or theta"
       );
     }
 
@@ -63,6 +65,12 @@ class Number extends Variable {
    * @param float|null $imaginary The imaginary component, or null.
    */
   public function setImaginary($imaginary) {
+    if (!is_numeric($imaginary) && $imaginary !== null) {
+      throw new \InvalidArgumentException(
+        "Imaginary component $imaginary must be a number or null"
+      );
+    }
+
     $this->imaginary = $imaginary;
   }
 
@@ -78,6 +86,12 @@ class Number extends Variable {
    * @param float|null $real The real component, or null.
    */
   public function setReal($real) {
+    if (!is_numeric($real) && $real !== null) {
+      throw new \InvalidArgumentException(
+        "Real component $real must be a number or null"
+      );
+    }
+
     $this->real = $real;
   }
 }

@@ -149,7 +149,7 @@ abstract class Variable {
   final protected static function numberToFloatingPoint(
     $real = null,
     $imaginary = null,
-    $forceComplex = false;
+    $forceComplex = false
   ) {
     if ($real === null) {
       return pack('C9', 0x02, 0, 0, 0, 0, 0, 0, 0, 0);
@@ -266,6 +266,14 @@ abstract class Variable {
 
   final protected function getEntry($series = null) {
     $data = $this->getData();
+    $name = $this->getName();
+    $type = $this->getType();
+
+    if ($name === null) {
+      throw new \BadFunctionCallException(
+        'Variable name must be set before export'
+      );
+    }
 
     switch ($series !== null ? $series : $this->series) {
       case Series::TI83:
@@ -273,8 +281,8 @@ abstract class Variable {
           'v2Ca8va*',
           11,
           strlen($data),
-          $this->getType(),
-          $this->getName(),
+          $type,
+          $name,
           strlen($data),
           $data
         );
@@ -283,8 +291,8 @@ abstract class Variable {
           'v2Ca8C2va*',
           13,
           strlen($data),
-          $this->getType(),
-          $this->getName(),
+          $type,
+          $name,
           $this->version,
           $this->archived ? 0x80 : 0x00,
           strlen($data),

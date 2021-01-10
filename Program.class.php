@@ -26,13 +26,13 @@ class Program extends Variable {
 
   final protected static function fromEntry($type, $name, $data) {
     $program = new static();
-    $program->setName($name);
+    $program->name = $name;
 
     if ($type === VariableType::PROGRAM_LOCKED) {
       $program->setEditable(false);
     }
 
-    $tokens_length = self::readWord($data, 0);
+    $tokens_length = parent::readWord($data, 0);
 
     if ($tokens_length + 2 > strlen($data)) {
       throw new \OutOfBoundsException(
@@ -53,7 +53,7 @@ class Program extends Variable {
    * Returns the program name.
    */
   public function getName() {
-    return str_replace('[', 'theta', $this->name);
+    return isset($this->name) ? str_replace('[', 'theta', $this->name) : null;
   }
 
   /**
@@ -61,7 +61,7 @@ class Program extends Variable {
    * @param string $name The program name as a token string.
    */
   public function setName($name) {
-    if (!preg_match('/^([A-Z\[]|theta)([0-9A-Z\[]|theta)*/', $name)) {
+    if (!preg_match('/^([A-Z\[]|theta)([0-9A-Z\[]|theta)*$/', $name)) {
       throw new \InvalidArgumentException("Invalid program name $name");
     }
 

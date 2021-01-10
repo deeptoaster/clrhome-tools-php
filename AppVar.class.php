@@ -12,8 +12,8 @@ class AppVar extends Variable {
 
   final protected static function fromEntry($type, $name, $data) {
     $appvar = new static();
-    $appvar->setName($name);
-    $appvar->setData($data);
+    $appvar->name = $name;
+    $appvar->data = $data;
     return $appvar;
   }
 
@@ -29,7 +29,7 @@ class AppVar extends Variable {
    * Returns the appvar name as a character string.
    */
   public function getName() {
-    return $this->name;
+    return isset($this->name) ? $this->name : null;
   }
 
   /**
