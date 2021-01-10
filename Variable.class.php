@@ -106,6 +106,10 @@ abstract class Variable {
         case VariableType::REAL:
           $variable = Number::fromEntry($type, $name, $data);
           break;
+        case VariableType::LIST_COMPLEX:
+        case VariableType::LIST_REAL:
+          $variable = ListVariable::fromEntry($type, $name, $data);
+          break;
         case VariableType::PROGRAM:
         case VariableType::PROGRAM_LOCKED:
           $variable = Program::fromEntry($type, $name, $data);
@@ -180,7 +184,7 @@ abstract class Variable {
     return $packed;
   }
 
-  private static function readWord($string, $offset) {
+  final protected static function readWord($string, $offset) {
     return (ord($string[$offset + 1]) << 8) + ord($string[$offset]);
   }
 

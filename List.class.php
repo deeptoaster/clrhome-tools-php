@@ -1,0 +1,165 @@
+<?
+namespace ClrHome;
+
+include_once(__DIR__ . '/Variable.class.php');
+
+/**
+ * A real or complex list.
+ */
+class ListVariable extends Variable implements \ArrayAccess {
+  private $elements = array();
+  private $name;
+
+  final protected static function fromEntry($type, $name, $data) {
+    $list = new static();
+    $list->name = $name;
+    $list_length = parent::readWord($data, 0);
+
+    $list->setElements(array_map(
+      array(parent::class, 'floatingPointToNumber'),
+      str_split(
+        substr($data, 2),
+        $type === VariableType::LIST_COMPLEX ? 18 : 9
+      )
+    ));
+
+    return $list;
+  }
+
+  final public function getData() {
+    $complex = $this->getType() === VariableType::LIST_COMPLEX;
+
+    return array_reduce($this->elements, function($data, $element) {
+      return $data . parent::numberToFloatingPoint(
+        $element[0],
+        $element[1],
+        $complex
+      );
+    }, pack('v', count($this->elements)));
+  }
+
+  /**
+   * Returns the list name as a token string.
+   */
+  public function getName() {
+    return isset($this->name)
+      ? strlen($this->name) >= 2
+        ? ord($this->name[1]) < 0x06
+          ? 'L' . (string)(ord($this->name[1]) + 1)
+          : '|L' . str_replace('[', 'theta', substr($this->name, 1))
+        : 'L1'
+      : null;
+  }
+
+  /**
+   * Sets the list name as a token string.
+   * @param string $name Either 'L1' through 'L6' or a name starting with '|L'.
+   */
+  public function setName($name) {
+    if (!preg_match('/^(L[1-6]|\|L([A-Z\[]|theta)([0-9A-Z\[]|theta)*)$/', $name)) {
+      throw new \InvalidArgumentException("Invalid list name $name");
+    }
+
+    $this->name = $name[0] === 'L'
+      ? pack('C2', 0x5d, (int)$name[1] - 1)
+      : pack('Ca*', 0x5d, substr(str_replace('theta', '[', $name), 2, 5));
+  }
+
+  final public function getType() {
+    $complex = false;
+
+    foreach ($this->elements as $element) {
+      if ($element[1] !== null && $element[1] !== 0) {
+        $complex = true;
+        break;
+      }
+    }
+
+    return $complex
+      ? VariableType::LIST_COMPLEX
+      : VariableType::LIST_REAL;
+  }
+
+  public function offsetExists($index) {
+    self::validateIndex($index);
+    return $index === (int)$index && $index < count($this->elements);
+  }
+
+  public function offsetGet($index) {
+    self::validateIndex($index);
+    return $this->elements[$index];
+  }
+
+  public function offsetSet($index, $value) {
+    if ($index === null) {
+      $index = count($this->elements);
+    }
+
+    self::validateIndex($index);
+
+    while (count($this->elements) < $index) {
+      $this->elements[] = array(0, null);
+    }
+
+    if (is_numeric($value) || $value === null) {
+      $this->elements[$index] = array($value, null);
+    } else if (is_array($value)) {
+      if (
+        count($value) > 2 ||
+            count($value) >= 1 &&
+            !is_numeric($value[0]) &&
+            $value[0] !== null ||
+            count($value) >= 2 &&
+            !is_numeric($value[1]) &&
+            $value[1] !== null
+      ) {
+        throw new \InvalidArgumentException(
+          "List element must be a number or tuple of real and imaginary components"
+        );
+      }
+
+      $this->elements[$index] = array(
+        array_key_exists(0, $value) ? $value[0] : null,
+        array_key_exists(1, $value) ? $value[1] : null
+      );
+    } else {
+      throw new \InvalidArgumentException(
+        "List element must be a number or tuple of real and imaginary components"
+      );
+    }
+  }
+
+  public function offsetUnset($index) {
+    self::validateIndex($index);
+    $this->elements = array_slice($this->elements, 0, $index);
+  }
+
+  private static function validateIndex($index) {
+    if ($index < 0 || $index !== (int)$index) {
+      throw new \OutOfRangeException(
+        "List index $index must be a nonnegative integer"
+      );
+    }
+  }
+
+  /**
+   * Returns the elements as tuples of real and imaginary components.
+   */
+  public function getElements() {
+    return $this->elements;
+  }
+
+  /**
+   * Sets the elements as numbers or tuples of real and imaginary components.
+   * @param array<array<number>> $elements The elements as numbers or tuples.
+   */
+  public function setElements($elements) {
+    unset($this[0]);
+
+    foreach ($elements as $element) {
+      $this[] = $element;
+    };
+  }
+}
+?>
+
