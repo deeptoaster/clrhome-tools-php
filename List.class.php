@@ -8,7 +8,6 @@ include_once(__DIR__ . '/Variable.class.php');
  */
 class ListVariable extends Variable implements \ArrayAccess {
   private $elements = array();
-  private $name;
 
   final protected static function fromEntry($type, $name, $data) {
     $list = new static();
@@ -56,7 +55,9 @@ class ListVariable extends Variable implements \ArrayAccess {
    * @param string $name Either 'L1' through 'L6' or a name starting with '|L'.
    */
   final public function setName($name) {
-    if (!preg_match('/^(L[1-6]|\|L([A-Z\[]|theta)([0-9A-Z\[]|theta)*)$/', $name)) {
+    if (
+      !preg_match('/^(L[1-6]|\|L([A-Z\[]|theta)([0-9A-Z\[]|theta)*)$/', $name)
+    ) {
       throw new \InvalidArgumentException("Invalid list name $name");
     }
 
@@ -87,13 +88,17 @@ class ListVariable extends Variable implements \ArrayAccess {
 
     $complex = $this->getType() === VariableType::LIST_COMPLEX;
 
-    return array_reduce($this->elements, function($data, $element) {
-      return $data . parent::numberToFloatingPoint(
-        $element[0],
-        $element[1],
-        $complex
-      );
-    }, pack('v', count($this->elements)));
+    return array_reduce(
+      $this->elements,
+      function($data, $element) use ($complex) {
+        return $data . parent::numberToFloatingPoint(
+          $element[0],
+          $element[1],
+          $complex
+        );
+      },
+      pack('v', count($this->elements))
+    );
   }
 
   public function offsetExists($index) {

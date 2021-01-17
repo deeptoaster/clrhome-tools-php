@@ -8,7 +8,6 @@ include_once(__DIR__ . '/Variable.class.php');
  */
 class Number extends Variable {
   private $imaginary = null;
-  private $name;
   private $real = null;
 
   final protected static function fromEntry($type, $name, $data) {

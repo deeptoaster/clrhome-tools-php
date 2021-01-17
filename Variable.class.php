@@ -24,6 +24,7 @@ abstract class VariableType extends Enum {
  * A TI variable.
  */
 abstract class Variable {
+  protected $name;
   private $archived = false;
   private $series = Series::TI83P;
   private $version = 0;
@@ -139,6 +140,29 @@ abstract class Variable {
     }
 
     return $variables;
+  }
+
+  /**
+   * Writes one or more variables to a TI variable file.
+   * @param array<Variable> $variables The list of variables to write.
+   * @param string $file_name The path of the file to write.
+   * @param string $comment An optional comment to include in the file.
+   */
+  final public static function variablesToFile(
+    $variables,
+    $file_name,
+    $comment = ''
+  ) {
+    $variables[0]->toFile($file_name, $comment, array_slice($variables, 1));
+  }
+
+  /**
+   * Returns one or more variables in TI variable file format as a string.
+   * @param array<Variable> $variables The list of variables to write.
+   * @param string $comment An optional comment to include in the file.
+   */
+  final public static function variablesToString($variables, $comment = '') {
+    return $variables[0]->toString($comment, array_slice($variables, 1));
   }
 
   final protected static function floatingPointToNumber($packed) {
@@ -283,13 +307,16 @@ abstract class Variable {
 
   final protected function getEntry($series = null) {
     $data = $this->getData();
-    $name = $this->getName();
     $type = $this->getType();
 
-    if ($name === null) {
-      throw new \BadFunctionCallException(
-        'Variable name must be set before export'
-      );
+    if ($this->name === null) {
+      $slash_position = strrpos(static::class, '\\');
+
+      throw new \BadFunctionCallException((
+        $slash_position !== false
+          ? substr(static::class, $slash_position + 1)
+          : static::class
+      ) . ' name must be set before export');
     }
 
     switch ($series !== null ? $series : $this->series) {
@@ -299,7 +326,7 @@ abstract class Variable {
           11,
           strlen($data),
           $type,
-          $name,
+          $this->name,
           strlen($data),
           $data
         );
@@ -309,7 +336,7 @@ abstract class Variable {
           13,
           strlen($data),
           $type,
-          $name,
+          $this->name,
           $this->version,
           $this->archived ? 0x80 : 0x00,
           strlen($data),

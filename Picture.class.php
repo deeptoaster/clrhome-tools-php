@@ -11,7 +11,6 @@ include_once(__DIR__ . '/Variable.class.php');
  */
 class Picture extends Variable implements \ArrayAccess {
   private $buffer;
-  private $name;
 
   final protected static function fromEntry($type, $name, $data) {
     $picture = new static();

@@ -22,7 +22,6 @@ class Program extends Variable {
   private $editable = true;
   private $inverseCatalog;
   private $language = Language::BASIC;
-  private $name;
 
   final protected static function fromEntry($type, $name, $data) {
     $program = new static();

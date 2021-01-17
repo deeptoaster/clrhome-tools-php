@@ -8,7 +8,6 @@ include_once(__DIR__ . '/Variable.class.php');
  */
 class Matrix extends Variable implements \ArrayAccess {
   private $elements = array();
-  private $name;
 
   final protected static function fromEntry($type, $name, $data) {
     $matrix = new static();
@@ -56,7 +55,7 @@ class Matrix extends Variable implements \ArrayAccess {
    * @param string $name One of '[A]' through '[J]'.
    */
   final public function setName($name) {
-    if (!preg_match('/^\[A-J\]$/', $name)) {
+    if (!preg_match('/^\[[A-J]\]$/', $name)) {
       throw new \InvalidArgumentException("Invalid matrix name $name");
     }
 
