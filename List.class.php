@@ -12,7 +12,7 @@ class ListVariable extends Variable implements \ArrayAccess {
 
   final protected static function fromEntry($type, $name, $data) {
     $list = new static();
-    $list->name = str_pad($name, 2, chr(0x00));
+    $list->name = str_pad($name, 2, "\x00");
 
     if (strlen($data) < 2) {
       throw new \OutOfBoundsException('List contents not found');
@@ -46,7 +46,7 @@ class ListVariable extends Variable implements \ArrayAccess {
   final public function getName() {
     return isset($this->name)
       ? ord($this->name[1]) < 0x06
-        ? 'L' . (string)(ord($this->name[1]) + 1)
+        ? 'L' . (string)(ord($this->name[1]) + 0x01)
         : '|L' . str_replace('[', 'theta', substr($this->name, 1))
       : null;
   }
@@ -61,7 +61,7 @@ class ListVariable extends Variable implements \ArrayAccess {
     }
 
     $this->name = $name[0] === 'L'
-      ? pack('C2', 0x5d, (int)$name[1] - 1)
+      ? pack('C2', 0x5d, (int)$name[1] - 0x01)
       : pack('Ca*', 0x5d, substr(str_replace('theta', '[', $name), 2, 5));
   }
 

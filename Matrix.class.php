@@ -12,7 +12,7 @@ class Matrix extends Variable implements \ArrayAccess {
 
   final protected static function fromEntry($type, $name, $data) {
     $matrix = new static();
-    $matrix->name = str_pad($name, 2, chr(0x00));
+    $matrix->name = str_pad($name, 2, "\x00");
 
     if (strlen($data) < 2) {
       throw new \OutOfBoundsException('Matrix contents not found');
@@ -135,7 +135,7 @@ class Matrix extends Variable implements \ArrayAccess {
       );
     }
 
-    return array($matches[1], $matches[2]);
+    return array((int)$matches[1], (int)$matches[2]);
   }
 
   /**

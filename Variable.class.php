@@ -14,6 +14,7 @@ abstract class VariableType extends Enum {
   const MATRIX = 0x02;
   const PROGRAM = 0x05;
   const PROGRAM_LOCKED = 0x06;
+  const PICTURE = 0x07;
   const COMPLEX = 0x0c;
   const LIST_COMPLEX = 0x0d;
   const APPVAR = 0x15;
@@ -115,6 +116,9 @@ abstract class Variable {
           break;
         case VariableType::MATRIX:
           $variable = Matrix::fromEntry($type, $name, $data);
+          break;
+        case VariableType::PICTURE:
+          $variable = Picture::fromEntry($type, $name, $data);
           break;
         case VariableType::PROGRAM:
         case VariableType::PROGRAM_LOCKED:
