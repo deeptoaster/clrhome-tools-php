@@ -143,6 +143,8 @@ class ListVariable extends Variable implements \ArrayAccess {
         isset($value[0]) ? $value[0] : null,
         isset($value[1]) ? $value[1] : null
       );
+    } else if (is_string($value)) {
+      $this->elements[$index] = parent::evaluateExpression($value);
     } else {
       throw new \InvalidArgumentException(
         "List element must be a number or tuple of real and imaginary components"
@@ -164,15 +166,15 @@ class ListVariable extends Variable implements \ArrayAccess {
   }
 
   /**
-   * Returns the elements as tuples of real and imaginary components.
+   * Returns the elements as component tuples.
    */
   public function getElements() {
     return $this->elements;
   }
 
   /**
-   * Sets the elements as numbers or tuples of real and imaginary components.
-   * @param array<array<number>> $elements The elements as numbers or tuples.
+   * Sets the elements as numbers, component tuples, or evaluable expressions.
+   * @param array<array<number>|number|string> $elements The elements to set.
    */
   public function setElements($elements) {
     unset($this[0]);

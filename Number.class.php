@@ -53,6 +53,22 @@ class Number extends Variable {
   }
 
   /**
+   * Returns the number as an evaluable expression.
+   */
+  public function getAsExpression() {
+    return "$this->real+{$this->imaginary}i";
+  }
+
+  /**
+   * Sets the number as an evaluable expression.
+   * @param string $expression The expression to evaluate.
+   */
+  public function setAsExpression($expression) {
+    list($this->real, $this->imaginary) =
+        parent::evaluateExpression($expression);
+  }
+
+  /**
    * Returns the imaginary component.
    */
   public function getImaginary() {

@@ -111,6 +111,8 @@ class Matrix extends Variable implements \ArrayAccess {
 
     if (is_numeric($value) || $value === null) {
       $this->elements[$row][$column] = $value;
+    } else if (is_string($value)) {
+      $this->elements[$row][$column] = parent::evaluateExpression($value)[0];
     } else {
       throw new \InvalidArgumentException(
         "Matrix element must be a number"
@@ -138,15 +140,15 @@ class Matrix extends Variable implements \ArrayAccess {
   }
 
   /**
-   * Returns the elements in row-major order.
+   * Returns the elements in row-major order as component tuples.
    */
   public function getElements() {
     return $this->elements;
   }
 
   /**
-   * Sets the elements in row-major order.
-   * @param array<array<number>> $elements The elements in row-major order.
+   * Sets the elements as numbers or evaluable expressions.
+   * @param array<array<number|string>> $elements The elements to set.
    */
   public function setElements($elements) {
     unset($this['0,0']);
