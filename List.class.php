@@ -31,7 +31,7 @@ class ListVariable extends Variable implements \ArrayAccess {
     $list->setElements(array_map(
       array(parent::class, 'floatingPointToNumber'),
       str_split(
-        substr($data, 2, $list_length * VARIABLE_REAL_LENGTH),
+        substr($data, 2, $list_length * $number_length),
         $number_length
       )
     ));
@@ -122,7 +122,9 @@ class ListVariable extends Variable implements \ArrayAccess {
       $this->elements[] = array(0, null);
     }
 
-    if (is_numeric($value) || $value === null) {
+    if (is_string($value)) {
+      $this->elements[$index] = parent::expressionToNumber($value);
+    } else if (is_numeric($value) || $value === null) {
       $this->elements[$index] = array($value, null);
     } else if (is_array($value)) {
       if (
@@ -143,8 +145,6 @@ class ListVariable extends Variable implements \ArrayAccess {
         isset($value[0]) ? $value[0] : null,
         isset($value[1]) ? $value[1] : null
       );
-    } else if (is_string($value)) {
-      $this->elements[$index] = parent::evaluateExpression($value);
     } else {
       throw new \InvalidArgumentException(
         "List element must be a number or tuple of real and imaginary components"
@@ -170,6 +170,18 @@ class ListVariable extends Variable implements \ArrayAccess {
    */
   public function getElements() {
     return $this->elements;
+  }
+
+  /**
+   * Returns the elements as evaluable expressions.
+   */
+  public function getElementsAsExpressions() {
+    return array_map(
+      function($element) {
+        return parent::numberToExpression($element[0], $element[1]);
+      },
+      $this->elements
+    );
   }
 
   /**

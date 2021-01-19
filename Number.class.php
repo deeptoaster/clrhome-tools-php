@@ -56,7 +56,7 @@ class Number extends Variable {
    * Returns the number as an evaluable expression.
    */
   public function getAsExpression() {
-    return "$this->real+{$this->imaginary}i";
+    return parent::numberToExpression($this->real, $this->imaginary);
   }
 
   /**
@@ -65,7 +65,7 @@ class Number extends Variable {
    */
   public function setAsExpression($expression) {
     list($this->real, $this->imaginary) =
-        parent::evaluateExpression($expression);
+        parent::expressionToNumber($expression);
   }
 
   /**

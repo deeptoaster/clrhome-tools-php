@@ -92,9 +92,9 @@ class Picture extends Variable implements \ArrayAccess {
   public function offsetSet($index, $value) {
     list($row, $column) = self::validateIndex($index);
     $mask = 0x80 >> $column % 8;
-    $byte_idx = (int)($row * PICTURE_COLUMN_COUNT / 8 + $column / 8);
-    $byte = ord($this->buffer[$byte_idx]);
-    $this->buffer[$byte_idx] =
+    $byte_index = (int)($row * PICTURE_COLUMN_COUNT / 8 + $column / 8);
+    $byte = ord($this->buffer[$byte_index]);
+    $this->buffer[$byte_index] =
         chr((bool)$value === true ? $byte | $mask : $byte & ~$mask);
   }
 

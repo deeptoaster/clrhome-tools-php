@@ -165,7 +165,42 @@ abstract class Variable {
     return $variables[0]->toString($comment, array_slice($variables, 1));
   }
 
-  final protected static function evaluateExpression($expression) {
+  final protected static function evaluateOperation(
+    $operation,
+    $real,
+    $imaginary
+  ) {
+    switch ($operation['operator']) {
+      case '^':
+        return array(pow($operation['real'], $real), 0.0);
+      case '*':
+        return array(
+          $operation['real'] * $real - $operation['imaginary'] * $imaginary,
+          $operation['imaginary'] * $real + $operation['real'] * $imaginary
+        );
+      case '/':
+        $denominator = $real * $real + $imaginary * $imaginary;
+
+        return array(
+          ($operation['real'] * $real + $operation['imaginary'] * $imaginary) /
+              $g,
+          ($operation['imaginary'] * $real - $operation['real'] * $imaginary) /
+              $g
+        );
+      case '+':
+        return array(
+          $operation['real'] + $real,
+          $operation['imaginary'] + $imaginary
+        );
+      case '-':
+        return array(
+          $operation['real'] - $real,
+          $operation['imaginary'] - $imaginary
+        );
+    }
+  }
+
+  final protected static function expressionToNumber($expression) {
     $real = null;
     $imaginary = null;
     $precedence = 0;
@@ -192,7 +227,7 @@ abstract class Variable {
           if ($real !== null || $imaginary !== null) {
             $multiply = true;
           } else {
-            $imaginary = 1;
+            $imaginary = 1.0;
             $token_start += 1;
             $valid = true;
           }
@@ -221,8 +256,8 @@ abstract class Variable {
           ) {
             list($real, $imaginary) = self::evaluateOperation(
               array_pop($stack),
-              $real,
-              $imaginary
+              (float)$real,
+              (float)$imaginary
             );
           }
 
@@ -239,16 +274,20 @@ abstract class Variable {
               $valid = true;
             }
           } else if (preg_match(
-            '/\G(\d*\.)?\d+(e[+-]?(\d+))?/',
+            '/\G([+-]?)(\d*\.)?\d+(e[+-]?(\d+))?/',
             $expression,
             $matches,
             null,
             $token_start
           )) {
             if ($real !== null || $imaginary !== null) {
-              throw new \UnexpectedValueException(
-                "Operator expected at $matches[0]"
-              );
+              if ($matches[1] === '') {
+                throw new \UnexpectedValueException(
+                  "Operator expected at $matches[0]"
+                );
+              }
+
+              break;
             }
 
             $real = (float)$matches[0];
@@ -261,7 +300,13 @@ abstract class Variable {
 
       $operator_position = strpos('^*/+-', $character);
 
-      if ($multiply || $operator_position !== false) {
+      if ($multiply || !$valid && $operator_position !== false) {
+        if ($real === null && $imaginary === null) {
+          throw new \UnexpectedValueException(
+            "Operand expected at $character"
+          );
+        }
+
         $operator_precedence = $precedence + (
           $multiply
             ? 1
@@ -272,15 +317,18 @@ abstract class Variable {
           count($stack) !== 0 &&
               $operator_precedence >= $stack[count($stack) - 1]['precedence']
         ) {
-          list($real, $imaginary) =
-              self::evaluateOperation(array_pop($stack), $real, $imaginary);
+          list($real, $imaginary) = self::evaluateOperation(
+            array_pop($stack),
+            (float)$real,
+            (float)$imaginary
+          );
         }
 
         $stack[] = array(
-          'imaginary' => $imaginary,
+          'imaginary' => (float)$imaginary,
           'operator' => $multiply ? '*' : $character,
           'precedence' => $operator_precedence,
-          'real' => $real
+          'real' => (float)$real
         );
 
         $real = null;
@@ -288,49 +336,21 @@ abstract class Variable {
         $token_start += $multiply ? 0 : 1;
         $valid = true;
       }
+
+      if (!$valid) {
+        throw new \UnexpectedValueException("Unexpected character $character");
+      }
     }
 
     while (count($stack) !== 0) {
-      list($real, $imaginary) =
-          self::evaluateOperation(array_pop($stack), $real, $imaginary);
+      list($real, $imaginary) = self::evaluateOperation(
+        array_pop($stack),
+        (float)$real,
+        (float)$imaginary
+      );
     }
 
-    return array($real, $imaginary);
-  }
-
-  final protected static function evaluateOperation(
-    $operation,
-    $real,
-    $imaginary
-  ) {
-    switch ($operation['operator']) {
-      case '^':
-        return array(pow($operation['real'], $real), 0);
-      case '*':
-        return array(
-          $operation['real'] * $real - $operation['imaginary'] * $imaginary,
-          $operation['imaginary'] * $real + $operation['real'] * $imaginary
-        );
-      case '/':
-        $denominator = $real * $real + $imaginary * $imaginary;
-
-        return array(
-          ($operation['real'] * $real + $operation['imaginary'] * $imaginary) /
-              $g,
-          ($operation['imaginary'] * $real - $operation['real'] * $imaginary) /
-              $g
-        );
-      case '+':
-        return array(
-          $operation['real'] + $real,
-          $operation['imaginary'] + $imaginary
-        );
-      case '-':
-        return array(
-          $operation['real'] - $real,
-          $operation['imaginary'] - $imaginary
-        );
-    }
+    return array($imaginary !== null ? (float)$real : $real, $imaginary);
   }
 
   final protected static function floatingPointToNumber($packed) {
@@ -352,6 +372,27 @@ abstract class Variable {
       $unpacked['exponent1'] & 0x80 !== 0 ? -$real : $real,
       $imaginary[0]
     );
+  }
+
+  final protected static function numberToExpression(
+    $real = null,
+    $imaginary = null
+  ) {
+    if ($real === null) {
+      return null;
+    } else if ($imaginary === null || $imaginary === 0.0) {
+      return (string)$real;
+    } else if ($imaginary === 1.0) {
+      return $real === 0.0 ? 'i' : "$real+i";
+    } else if ($imaginary === -1.0) {
+      return $real === 0.0 ? '-i' : "$real-i";
+    } else {
+      $operator = $imaginary < 0 ? '' : '+';
+
+      return $real === 0.0
+        ? "${imaginary}i"
+        : "$real$operator${imaginary}i";
+    }
   }
 
   final protected static function numberToFloatingPoint(

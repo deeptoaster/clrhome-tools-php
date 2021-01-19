@@ -99,20 +99,20 @@ class Matrix extends Variable implements \ArrayAccess {
       list($row, $column) = self::validateIndex($index);
     }
 
-    for ($i = 0; $i <= $row; $i++) {
-      if (!isset($this->elements[$i])) {
+    for ($row_index = 0; $row_index <= $row; $row_index++) {
+      if (!isset($this->elements[$row_index])) {
         $this->elements[] = array();
       }
 
-      while (count($this->elements[$i]) <= $column) {
-        $this->elements[$i][] = 0;
+      while (count($this->elements[$row_index]) <= $column) {
+        $this->elements[$row_index][] = 0;
       }
     }
 
-    if (is_numeric($value) || $value === null) {
+    if (is_string($value)) {
+      $this->elements[$row][$column] = parent::expressionToNumber($value)[0];
+    } else if (is_numeric($value) || $value === null) {
       $this->elements[$row][$column] = $value;
-    } else if (is_string($value)) {
-      $this->elements[$row][$column] = parent::evaluateExpression($value)[0];
     } else {
       throw new \InvalidArgumentException(
         "Matrix element must be a number"
@@ -124,8 +124,9 @@ class Matrix extends Variable implements \ArrayAccess {
     list($row, $column) = self::validateIndex($index);
     $this->elements = array_slice($this->elements, 0, $row);
 
-    for ($i = 0; $i < $row; $i++) {
-      $this->elements[$i] = array_slice($this->elements[$i], 0, $column);
+    for ($row_index = 0; $row_index < $row; $row_index++) {
+      $this->elements[$row_index] =
+          array_slice($this->elements[$row_index], 0, $column);
     }
   }
 
@@ -147,6 +148,15 @@ class Matrix extends Variable implements \ArrayAccess {
   }
 
   /**
+   * Returns the elements in row-major order as evaluable expressions.
+   */
+  public function getElementsAsExpressions() {
+    return array_map(function($row) {
+      return array_map(array(parent::class, 'numberToExpression'), $row);
+    }, $this->elements);
+  }
+
+  /**
    * Sets the elements as numbers or evaluable expressions.
    * @param array<array<number|string>> $elements The elements to set.
    */
@@ -154,7 +164,7 @@ class Matrix extends Variable implements \ArrayAccess {
     unset($this['0,0']);
     $column_count = null;
 
-    foreach ($elements as $i => $row) {
+    foreach ($elements as $row_index => $row) {
       if ($column_count === null) {
         $column_count = count($row);
       } else if ($column_count !== count($row)) {
@@ -163,10 +173,8 @@ class Matrix extends Variable implements \ArrayAccess {
         );
       }
 
-      $this->elements[] = array();
-
-      foreach ($row as $element) {
-        $this->elements[$i][] = $element;
+      foreach ($row as $column_index => $element) {
+        $this["$row_index,$column_index"] = $element;
       }
     };
   }

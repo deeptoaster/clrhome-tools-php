@@ -280,22 +280,22 @@ class Program extends Variable {
       );
     }
 
-    $token_idx = 0;
+    $token_index = 0;
 
     foreach ($this->catalog->children() as $token) {
       switch ($token->getName()) {
         case 'table':
-          $subtoken_idx = 0;
+          $subtoken_index = 0;
 
           foreach ($token->children() as $subtoken) {
             $this->registerToken(
               $namespaces,
               $subtoken,
-              $token_idx,
-              $subtoken_idx
+              $token_index,
+              $subtoken_index
             );
 
-            $subtoken_idx++;
+            $subtoken_index++;
           }
 
           break;
@@ -303,21 +303,21 @@ class Program extends Variable {
           $this->registerToken(
             $namespaces,
             $token,
-            $token_idx
+            $token_index
           );
 
           break;
       }
 
-      $token_idx++;
+      $token_index++;
     }
   }
 
   private function registerToken(
     $namespaces,
     $token,
-    $token_idx,
-    $subtoken_idx = null
+    $token_index,
+    $subtoken_index = null
   ) {
     foreach ($namespaces as $prefix => $namespace) {
       $id = $token->attributes(
@@ -325,8 +325,8 @@ class Program extends Variable {
       )['id'];
 
       if ($id !== null) {
-        $this->inverseCatalog[":$id"] = chr($token_idx) . (
-          $subtoken_idx !== null ? chr($subtoken_idx) : ''
+        $this->inverseCatalog[":$id"] = chr($token_index) . (
+          $subtoken_index !== null ? chr($subtoken_index) : ''
         );
       }
     }
