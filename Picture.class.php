@@ -11,6 +11,7 @@ include_once(__DIR__ . '/Variable.class.php');
  */
 class Picture extends Variable implements \ArrayAccess {
   private $buffer;
+  private $rowCount = PICTURE_ROW_COUNT;
 
   final protected static function fromEntry($type, $name, $data) {
     $picture = new static();
@@ -22,19 +23,20 @@ class Picture extends Variable implements \ArrayAccess {
 
     $pixels_length = parent::readWord($data, 0);
 
-    if ($pixels_length / 8 + 2 > strlen($data)) {
+    if ($pixels_length + 2 > strlen($data)) {
       throw new \OutOfBoundsException(
         'Picture length exceeds variable data length'
       );
     }
 
+    $picture->setRowCount(ceil($pixels_length / PICTURE_COLUMN_COUNT * 8));
     $picture->setBuffer(substr($data, 2, $pixels_length));
     return $picture;
   }
 
   public function __construct() {
     $this->buffer =
-        str_repeat("\x00", PICTURE_ROW_COUNT * PICTURE_COLUMN_COUNT / 8);
+        str_repeat("\x00", $this->rowCount * PICTURE_COLUMN_COUNT / 8);
   }
 
   /**
@@ -68,14 +70,14 @@ class Picture extends Variable implements \ArrayAccess {
   final protected function getData() {
     return pack(
       'va*',
-      PICTURE_ROW_COUNT * PICTURE_COLUMN_COUNT / 8,
+      $this->rowCount * PICTURE_COLUMN_COUNT / 8,
       $this->getBuffer()
     );
   }
 
   public function offsetExists($index) {
     list($row, $column) = self::validateIndex($index);
-    return $row < PICTURE_ROW_COUNT &&
+    return $row < $this->rowCount &&
         $column < PICTURE_COLUMN_COUNT;
   }
 
@@ -125,10 +127,26 @@ class Picture extends Variable implements \ArrayAccess {
    */
   public function setBuffer($buffer) {
     $this->buffer = str_pad(
-      substr($buffer, 0, PICTURE_ROW_COUNT * PICTURE_COLUMN_COUNT / 8),
-      PICTURE_ROW_COUNT * PICTURE_COLUMN_COUNT / 8,
+      substr($buffer, 0, $this->rowCount * PICTURE_COLUMN_COUNT / 8),
+      $this->rowCount * PICTURE_COLUMN_COUNT / 8,
       "\x00"
     );
+  }
+
+  /**
+   * Returns the number of rows in the picture, by default 63.
+   */
+  public function getRowCount() {
+    return $this->rowCount;
+  }
+
+  /**
+   * Sets the number of rows in the picture, or reset to 63.
+   * @param number $row_count The number of rows to set.
+   */
+  public function setRowCount($row_count = PICTURE_ROW_COUNT) {
+    $this->rowCount = $row_count;
+    $this->setBuffer($this->buffer);
   }
 }
 ?>
