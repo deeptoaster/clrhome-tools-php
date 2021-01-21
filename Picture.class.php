@@ -18,14 +18,14 @@ class Picture extends Variable implements \ArrayAccess {
     $picture->name = str_pad($name, 2, "\x00");
 
     if (strlen($data) < 2) {
-      throw new \OutOfBoundsException('Matrix contents not found');
+      throw new \OutOfBoundsException('Picture contents not found');
     }
 
     $pixels_length = parent::readWord($data, 0);
 
     if ($pixels_length + 2 > strlen($data)) {
       throw new \OutOfBoundsException(
-        'Picture length exceeds variable data length'
+        'Picture buffer length exceeds variable data length'
       );
     }
 

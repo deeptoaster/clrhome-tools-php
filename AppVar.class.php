@@ -7,21 +7,26 @@ include_once(__DIR__ . '/Variable.class.php');
  * A TI appvar.
  */
 class AppVar extends Variable {
-  private $data = '';
+  private $contents = '';
 
   final protected static function fromEntry($type, $name, $data) {
     $appvar = new static();
     $appvar->name = $name;
-    $appvar->data = $data;
+
+    if (strlen($data) < 2) {
+      throw new \OutOfBoundsException('Appvar contents not found');
+    }
+
+    $contents_length = parent::readWord($data, 0);
+
+    if ($contents_length + 2 > strlen($data)) {
+      throw new \OutOfBoundsException(
+        'Appvar content length exceeds variable data length'
+      );
+    }
+
+    $appvar->setContents(substr($data, 2, $contents_length));
     return $appvar;
-  }
-
-  public function getData() {
-    return $this->data;
-  }
-
-  public function setData($data) {
-    $this->data = $data;
   }
 
   /**
@@ -41,6 +46,26 @@ class AppVar extends Variable {
 
   final public function getType() {
     return VariableType::APPVAR;
+  }
+
+  final protected function getData() {
+    $contents = $this->getContents();
+    return pack('va*', strlen($contents), $contents);
+  }
+
+  /**
+   * Returns the appvar contents.
+   */
+  public function getContents() {
+    return $this->contents;
+  }
+
+  /**
+   * Sets the appvar contents.
+   * @param string $contents The appvar contents to set.
+   */
+  public function setContents($contents) {
+    $this->contents = $contents;
   }
 }
 ?>

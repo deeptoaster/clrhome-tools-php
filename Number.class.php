@@ -13,6 +13,11 @@ class Number extends Variable {
   final protected static function fromEntry($type, $name, $data) {
     $number = new static();
     $number->name = $name;
+
+    if (strlen($data) < 9) {
+      throw new \OutOfBoundsException('Number contents not found');
+    }
+
     list($real, $imaginary) = parent::floatingPointToNumber($data);
     $number->setReal($real);
     $number->setImaginary($imaginary);

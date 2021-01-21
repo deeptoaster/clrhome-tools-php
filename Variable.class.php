@@ -50,7 +50,7 @@ abstract class Variable {
       );
     }
 
-    return $this->fromString($packed);
+    return self::fromString($packed);
   }
 
   /**
