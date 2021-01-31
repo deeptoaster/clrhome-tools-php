@@ -1,8 +1,7 @@
 <?
 namespace ClrHome;
 
-// TODO: move from conf.xml to catalog.xml
-define('PROGRAM_CATALOG_URL', 'https://clrhome.org/catalog/conf.xml');
+define('PROGRAM_CATALOG_URL', 'https://clrhome.org/catalog/catalog.xml');
 
 include_once(__DIR__ . '/Variable.class.php');
 
