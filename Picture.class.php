@@ -4,12 +4,12 @@ namespace ClrHome;
 define('PICTURE_COLUMN_COUNT', 96);
 define('PICTURE_ROW_COUNT', 63);
 
-include_once(__DIR__ . '/Variable.class.php');
+include_once(__DIR__ . '/RamVariable.class.php');
 
 /**
  * A picture variable.
  */
-class Picture extends Variable implements \ArrayAccess {
+class Picture extends RamVariable implements \ArrayAccess {
   private $buffer;
   private $rowCount = PICTURE_ROW_COUNT;
 

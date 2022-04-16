@@ -1,12 +1,12 @@
 <?
 namespace ClrHome;
 
-include_once(__DIR__ . '/Variable.class.php');
+include_once(__DIR__ . '/RamVariable.class.php');
 
 /**
  * A real matrix.
  */
-class Matrix extends Variable implements \ArrayAccess {
+class Matrix extends RamVariable implements \ArrayAccess {
   private $elements = array();
 
   final protected static function fromEntry($type, $name, $data) {

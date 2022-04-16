@@ -1,12 +1,12 @@
 <?
 namespace ClrHome;
 
-include_once(__DIR__ . '/Variable.class.php');
+include_once(__DIR__ . '/RamVariable.class.php');
 
 /**
  * A real or complex list.
  */
-class ListVariable extends Variable implements \ArrayAccess {
+class ListVariable extends RamVariable implements \ArrayAccess {
   private $elements = array();
 
   final protected static function fromEntry($type, $name, $data) {

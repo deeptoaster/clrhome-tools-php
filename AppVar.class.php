@@ -1,12 +1,12 @@
 <?
 namespace ClrHome;
 
-include_once(__DIR__ . '/Variable.class.php');
+include_once(__DIR__ . '/RamVariable.class.php');
 
 /**
  * A TI appvar.
  */
-class AppVar extends Variable {
+class AppVar extends RamVariable {
   private $contents = '';
 
   final protected static function fromEntry($type, $name, $data) {

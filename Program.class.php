@@ -3,7 +3,7 @@ namespace ClrHome;
 
 define('PROGRAM_CATALOG_URL', 'https://clrhome.org/catalog/catalog.xml');
 
-include_once(__DIR__ . '/Variable.class.php');
+include_once(__DIR__ . '/RamVariable.class.php');
 
 abstract class Language extends Enum {
   const AXE = 'axe';
@@ -14,7 +14,7 @@ abstract class Language extends Enum {
 /**
  * A TI program.
  */
-class Program extends Variable {
+class Program extends RamVariable {
   private $body = '';
   private $catalog;
   private $catalogFile = __DIR__ . '/catalog.xml';

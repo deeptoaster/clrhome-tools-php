@@ -1,12 +1,12 @@
 <?
 namespace ClrHome;
 
-include_once(__DIR__ . '/Variable.class.php');
+include_once(__DIR__ . '/RamVariable.class.php');
 
 /**
  * A real or complex number.
  */
-class Number extends Variable {
+class Number extends RamVariable {
   private $imaginary = null;
   private $real = null;
 
