@@ -3,7 +3,7 @@ namespace ClrHome;
 
 define('PROGRAM_CATALOG_URL', 'https://clrhome.org/catalog/catalog.xml');
 
-include_once(__DIR__ . '/RamVariable.class.php');
+include_once(__DIR__ . '/Variable.class.php');
 
 abstract class Language extends Enum {
   const AXE = 'axe';
@@ -14,7 +14,7 @@ abstract class Language extends Enum {
 /**
  * A TI program.
  */
-class Program extends RamVariable {
+class Program extends Variable {
   private $body = '';
   private $catalog;
   private $catalogFile = __DIR__ . '/catalog.xml';
@@ -115,7 +115,7 @@ class Program extends RamVariable {
 
   /**
    * Sets the path of the catalog file to use for tokenizing.
-   * @param The path of the catalog file to use.
+   * @param string $catalog_file The path of the catalog file to use.
    */
   final public function setCatalogFile($catalog_file) {
     if ($this->catalogFile !== $catalog_file) {

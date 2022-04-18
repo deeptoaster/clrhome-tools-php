@@ -38,12 +38,4 @@ abstract class Enum {
     return $value;
   }
 }
-
-/**
- * An enum representing the calculator series to target during export.
- */
-abstract class Series extends Enum {
-  const TI83 = '**TI83**';
-  const TI83P = '**TI83F*';
-}
 ?>
