@@ -13,11 +13,13 @@ abstract class Enum {
 
     if ($const_list === null) {
       $const_list = array();
-      $reflection = new \ReflectionClass(static::class);
 
-      while ($reflection !== false) {
+      for (
+        $reflection = new \ReflectionClass(static::class);
+        $reflection !== false;
+        $reflection = $reflection->getParentClass()
+      ) {
         $const_list = array_merge($reflection->getConstants(), $const_list);
-        $reflection = $reflection->getParentClass();
       }
     }
 

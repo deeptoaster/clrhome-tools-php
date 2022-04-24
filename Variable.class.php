@@ -115,6 +115,27 @@ abstract class Variable extends TiObject {
   }
 
   /**
+   * Returns one or more variables in TI variable file format as a string.
+   * @param string $comment An optional comment to include in the file.
+   * @param array<Variable> $includes Additional variables to include.
+   */
+  final public function toString($comment = '', $includes = array()) {
+    $entries = array_reduce($includes, function($entries, $include) {
+      return $entries . $include->getEntry($this->series);
+    }, $this->getEntry());
+
+    return pack(
+      'a8C3A42va*v',
+      $this->series,
+      0x1a, 0x0a, 0x00,
+      $comment,
+      strlen($entries),
+      $entries,
+      array_sum(unpack('C*', $entries))
+    );
+  }
+
+  /**
    * Writes one or more RAM variables to a TI variable file.
    * @param array<Variable> $variables The list of variables to write.
    * @param string $file_name The path of the file to write.
@@ -404,27 +425,6 @@ abstract class Variable extends TiObject {
 
   final protected static function readWord($string, $offset) {
     return (ord($string[$offset + 1]) << 8) + ord($string[$offset]);
-  }
-
-  /**
-   * Returns one or more variables in TI variable file format as a string.
-   * @param string $comment An optional comment to include in the file.
-   * @param array<Variable> $includes Additional variables to include.
-   */
-  final public function toString($comment = '', $includes = array()) {
-    $entries = array_reduce($includes, function($entries, $include) {
-      return $entries . $include->getEntry($this->series);
-    }, $this->getEntry());
-
-    return pack(
-      'a8C3A42va*v',
-      $this->series,
-      0x1a, 0x0a, 0x00,
-      $comment,
-      strlen($entries),
-      $entries,
-      array_sum(unpack('C*', $entries))
-    );
   }
 
   /**

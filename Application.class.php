@@ -2,6 +2,7 @@
 namespace ClrHome;
 
 define('FLASH_APP_PAGE_START', 0x4000);
+define('FLASH_FILE_SIGNATURE', '**TIFL**');
 
 include_once(__DIR__ . '/TiObject.class.php');
 
@@ -40,15 +41,113 @@ class Application extends TiObject implements \ArrayAccess {
    * @param string $packed A string in TI flash file format.
    */
   final public static function fromString($packed) {
-    throw new \RuntimeException();
-  }
+    $unpacked = unpack(
+      'a8file_signature/C2revision/C2/Cmonth/Cdate/nyear/Cname_length/a8name/x23/Cseries/Ctype/x24/Vcontents_length/a*contents',
+      $packed
+    );
 
-  private static function dataToHex($address, $type, $data) {
-    $line_packed = pack('CnCa*', strlen($data), $address, $type, $data);
+    if (
+      $unpacked === false ||
+          $unpacked['file_signature'] !== FLASH_FILE_SIGNATURE
+    ) {
+      throw new \OutOfBoundsException('Invalid application file format');
+    }
 
-    return ':' . strtoupper(
-      bin2hex($line_packed . chr(-array_sum(unpack('C*', $line_packed))))
-    ) . "\r\n";
+    $application = new static();
+
+    $application->setRevision(sprintf(
+      '%u.%u',
+      self::validateInteger($unpacked['revision1'], 'revision number'),
+      self::validateInteger($unpacked['revision2'], 'revision number')
+    ));
+
+    $application->setTimestamp(sprintf(
+      '%u-%u-%u',
+      self::validateInteger(dechex($unpacked['year']), 'timestamp year'),
+      self::validateInteger(dechex($unpacked['month']), 'timestamp month'),
+      self::validateInteger(dechex($unpacked['date']), 'timestamp date')
+    ));
+
+    if ($unpacked['name_length'] < 0 || $unpacked['name_length'] > 8) {
+      throw new \OutOfBoundsException(
+        "Name length $unpacked[name_length] must be between 0 and 8"
+      );
+    }
+
+    $application->setName(substr(
+      $unpacked['name'],
+      0,
+      $unpacked['name_length']
+    ));
+
+    $application->setSeries($unpacked['series']);
+
+    if ($unpacked['contents_length'] > strlen($unpacked['contents'])) {
+      throw new \OutOfBoundsException(
+        'Hex contents length exceeds file length'
+      );
+    }
+
+    $unpacked['contents'] =
+        substr($unpacked['contents'], 0, $unpacked['contents_length']);
+    $line = strtok($unpacked['contents'], "\r\n");
+    $page_number = null;
+    $address = null;
+    $done = false;
+
+    while ($line !== false) {
+      if ($done) {
+        throw new OutOfBoundsException('Extra data present after end block');
+      }
+
+      $line_unpacked = self::dataFromHex($line);
+
+      switch ($line_unpacked['type']) {
+        case HexLineType::DATA:
+          if ($page_number === null) {
+            throw new OutOfBoundsException(
+              'Expected page number to be set before data'
+            );
+          }
+
+          if ($line_unpacked['address'] < FLASH_APP_PAGE_START) {
+            throw new OutOfBoundsException(
+              "Address $line_unpacked[address] cannot be lower than $4000"
+            );
+          }
+
+          $line_start = $line_unpacked['address'] - FLASH_APP_PAGE_START;
+
+          $application->pages[$page_number] = substr_replace(
+            str_pad($application->pages[$page_number], $line_start, "\0"),
+            $line_unpacked['data'],
+            $line_start,
+            strlen($line_unpacked['data'])
+          );
+
+          break;
+        case HexLineType::END:
+          $done = true;
+          break;
+        case HexLineType::PAGE:
+          $page_number =
+              unpack('npage_number', $line_unpacked['data'])['page_number'];
+
+          if (!array_key_exists($page_number, $application->pages)) {
+            $application->pages[$page_number] = '';
+          }
+
+          break;
+      }
+
+      $line = strtok("\r\n");
+    }
+
+    if (!$done) {
+      throw new \OutOfBoundsException('End block not found');
+    }
+
+    return $application;
   }
 
   /**
@@ -99,7 +198,7 @@ class Application extends TiObject implements \ArrayAccess {
 
     return pack(
       'a8C6nCa8x23C2x24Va*',
-      '**TIFL**',
+      FLASH_FILE_SIGNATURE,
       $this->revision[0],
       $this->revision[2],
       0x01, 0x88,
@@ -135,12 +234,58 @@ class Application extends TiObject implements \ArrayAccess {
     unset($this->pages[$page_number]);
   }
 
+  private static function dataFromHex($data_hex) {
+    if ($data_hex[0] !== ':') {
+      throw new \OutOfBoundsException("Invalid hex line $data_hex");
+    }
+
+    $line_packed = hex2bin(substr($data_hex, 1));
+
+    if ($line_packed === false || strlen($line_packed) < 5) {
+      throw new \OutOfBoundsException("Invalid hex line $data_hex");
+    }
+
+    if (array_sum(unpack('C*', $line_packed)) & 0xff !== 0) {
+      throw new \OutOfBoundsException("Incorrect checksum on $data_hex");
+    }
+
+    $line_unpacked = unpack(
+      'Cdata_length/naddress/Ctype/a*data',
+      substr($line_packed, 0, -1)
+    );
+
+    if ($line_unpacked['data_length'] > strlen($line_unpacked['data'])) {
+      throw new \OutOfBoundsException("Hex data length exceeds line length");
+    }
+
+    $line_unpacked['data'] =
+        substr($line_unpacked['data'], 0, $line_unpacked['data_length']);
+    unset($line_unpacked['data_length']);
+    return $line_unpacked;
+  }
+
+  private static function dataToHex($address, $type, $data) {
+    $line_packed = pack('CnCa*', strlen($data), $address, $type, $data);
+
+    return ':' . strtoupper(
+      bin2hex($line_packed . chr(-array_sum(unpack('C*', $line_packed))))
+    ) . "\r\n";
+  }
+
   private static function validateIndex($page_number) {
     if ($page_number < 0 || $page_number !== (int)$page_number) {
       throw new \OutOfRangeException(
         "Page number $page_number must be a nonnegative integer"
       );
     }
+  }
+
+  private static function validateInteger($string, $description) {
+    if (!preg_match('/^\d+$/', $string)) {
+      throw new \OutOfBoundsException("Invalid $description $string");
+    }
+
+    return (int)$string;
   }
 
   /**

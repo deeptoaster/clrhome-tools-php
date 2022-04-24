@@ -48,7 +48,7 @@ abstract class TiObject {
       );
     }
 
-    return self::fromString($packed);
+    return static::fromString($packed);
   }
 
   /**
