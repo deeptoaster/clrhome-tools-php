@@ -130,8 +130,8 @@ class Application extends TiObject implements \ArrayAccess {
           $done = true;
           break;
         case HexLineType::PAGE:
-          $page_number =
-              unpack('npage_number', $line_unpacked['data'])['page_number'];
+          $data_unpacked = unpack('npage_number', $line_unpacked['data']);
+          $page_number = $data_unpacked['page_number'];
 
           if (!array_key_exists($page_number, $application->pages)) {
             $application->pages[$page_number] = '';

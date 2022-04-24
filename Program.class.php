@@ -17,10 +17,14 @@ abstract class Language extends Enum {
 class Program extends Variable {
   private $body = '';
   private $catalog;
-  private $catalogFile = __DIR__ . '/catalog.xml';
+  private $catalogFile;
   private $editable = true;
   private $inverseCatalog;
   private $language = Language::BASIC;
+
+  public function __construct() {
+    $this->catalogFile = __DIR__ . '/catalog.xml';
+  }
 
   final protected static function fromEntry($type, $name, $data) {
     $program = new static();

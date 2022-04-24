@@ -5,6 +5,8 @@ variables and files, implemented in PHP
 
 ## Installation
 
+clrhome-tools-php requires PHP 5.5 or above.
+
 The easiest way to use clrhome-tools-php is simply to clone the repository
 (such as with a [git submodule](https://git-scm.com/docs/git-submodule)) and
 [include](https://www.php.net/manual/en/function.include.php) or
@@ -68,10 +70,6 @@ the library. To interface with it, use the `getAsExpression` and
     $picture->setName('Pic1');
     $picture->toFile('Pic1.8xi');
     ?>
-
-A robust tokenizer based on the [Catalog](https://clrhome.org/catalog/) is
-built into the library. To interface with it, use the `getBodyAsChars` and
-`setBodyAsChars` methods.
 
 ## Quick Start: Programs
 

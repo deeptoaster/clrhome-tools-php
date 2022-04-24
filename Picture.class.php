@@ -13,6 +13,11 @@ class Picture extends Variable implements \ArrayAccess {
   private $buffer;
   private $rowCount = PICTURE_ROW_COUNT;
 
+  public function __construct() {
+    $this->buffer =
+        str_repeat("\x00", $this->rowCount * PICTURE_COLUMN_COUNT / 8);
+  }
+
   final protected static function fromEntry($type, $name, $data) {
     $picture = new static();
     $picture->name = str_pad($name, 2, "\x00");
@@ -32,11 +37,6 @@ class Picture extends Variable implements \ArrayAccess {
     $picture->setRowCount(ceil($pixels_length / PICTURE_COLUMN_COUNT * 8));
     $picture->setBuffer(substr($data, 2, $pixels_length));
     return $picture;
-  }
-
-  public function __construct() {
-    $this->buffer =
-        str_repeat("\x00", $this->rowCount * PICTURE_COLUMN_COUNT / 8);
   }
 
   /**
