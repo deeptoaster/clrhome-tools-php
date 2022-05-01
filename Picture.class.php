@@ -1,8 +1,8 @@
-<?
+<?php
 namespace ClrHome;
 
-define('PICTURE_COLUMN_COUNT', 96);
-define('PICTURE_ROW_COUNT', 63);
+define('ClrHome\PICTURE_COLUMN_COUNT', 96);
+define('ClrHome\PICTURE_ROW_COUNT', 63);
 
 include_once(__DIR__ . '/Variable.class.php');
 

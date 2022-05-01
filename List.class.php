@@ -1,4 +1,4 @@
-<?
+<?php
 namespace ClrHome;
 
 include_once(__DIR__ . '/Variable.class.php');

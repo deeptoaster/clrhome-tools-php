@@ -1,7 +1,7 @@
 <?php
 namespace ClrHome;
 
-define('VARIABLE_REAL_LENGTH', 9);
+define('ClrHome\VARIABLE_REAL_LENGTH', 9);
 
 include_once(__DIR__ . '/TiObject.class.php');
 

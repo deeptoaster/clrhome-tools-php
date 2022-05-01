@@ -1,7 +1,7 @@
-<?
+<?php
 namespace ClrHome;
 
-include(__DIR__ . '/common.php');
+include_once(__DIR__ . '/common.php');
 
 /**
  * An enum representing the variable type.

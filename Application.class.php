@@ -1,8 +1,8 @@
-<?
+<?php
 namespace ClrHome;
 
-define('FLASH_APP_PAGE_START', 0x4000);
-define('FLASH_FILE_SIGNATURE', '**TIFL**');
+define('ClrHome\FLASH_APP_PAGE_START', 0x4000);
+define('ClrHome\FLASH_FILE_SIGNATURE', '**TIFL**');
 
 include_once(__DIR__ . '/TiObject.class.php');
 
