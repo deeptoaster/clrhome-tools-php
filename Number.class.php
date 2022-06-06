@@ -1,14 +1,18 @@
 <?php
 namespace ClrHome;
 
+include_once(__DIR__ . '/SimpleNumber.class.php');
 include_once(__DIR__ . '/Variable.class.php');
 
 /**
  * A real or complex number.
  */
 class Number extends Variable {
-  private $imaginary = null;
-  private $real = null;
+  private $number;
+
+  public function __construct() {
+    $this->number = new SimpleNumber();
+  }
 
   final protected static function fromEntry($type, $name, $data) {
     $number = new static();
@@ -18,9 +22,7 @@ class Number extends Variable {
       throw new \OutOfBoundsException('Number contents not found');
     }
 
-    list($real, $imaginary) = parent::floatingPointToNumber($data);
-    $number->setReal($real);
-    $number->setImaginary($imaginary);
+    $number->number = SimpleNumber::fromFloatingPoint($data);
     return $number;
   }
 
@@ -48,20 +50,38 @@ class Number extends Variable {
   }
 
   final public function getType() {
-    return $this->imaginary !== null && $this->imaginary !== 0
+    return !$this->number->isReal()
       ? VariableType::COMPLEX
       : VariableType::REAL;
   }
 
   final protected function getData() {
-    return parent::numberToFloatingPoint($this->real, $this->imaginary);
+    return $this->number->toFloatingPoint();
+  }
+
+  /**
+   * Returns the number as a `SimpleNumber`.
+   */
+  public function get() {
+    return $this->number;
   }
 
   /**
    * Returns the number as an evaluable expression.
    */
   public function getAsExpression() {
-    return parent::numberToExpression($this->real, $this->imaginary);
+    return $this->number->toExpression();
+  }
+
+  /**
+   * Returns the number as a `SimpleNumber`.
+   */
+  public function set($number) {
+    if (!is_a($number, SimpleNumber::class)) {
+      throw new \InvalidArgumentException('Number must be a SimpleNumber');
+    }
+
+    $this->number = $number;
   }
 
   /**
@@ -69,15 +89,14 @@ class Number extends Variable {
    * @param string $expression The expression to evaluate.
    */
   public function setAsExpression($expression) {
-    list($this->real, $this->imaginary) =
-        parent::expressionToNumber($expression);
+    $this->number = SimpleNumber::fromExpression($expression);
   }
 
   /**
    * Returns the imaginary component.
    */
   public function getImaginary() {
-    return $this->imaginary;
+    return $this->number->imaginary;
   }
 
   /**
@@ -91,14 +110,14 @@ class Number extends Variable {
       );
     }
 
-    $this->imaginary = $imaginary;
+    $this->number = new SimpleNumber($this->number->real, $imaginary);
   }
 
   /**
    * Returns the real component.
    */
   public function getReal() {
-    return $this->real;
+    return $this->number->real;
   }
 
   /**
@@ -112,7 +131,7 @@ class Number extends Variable {
       );
     }
 
-    $this->real = $real;
+    $this->number = new SimpleNumber($real, $this->number->imaginary);
   }
 }
 ?>

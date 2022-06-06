@@ -1,6 +1,7 @@
 <?php
 namespace ClrHome;
 
+include_once(__DIR__ . '/SimpleNumber.class.php');
 include_once(__DIR__ . '/Variable.class.php');
 
 /**
@@ -19,8 +20,8 @@ class ListVariable extends Variable implements \ArrayAccess {
 
     $list_length = parent::readWord($data, 0);
     $number_length = $type === VariableType::LIST_COMPLEX
-      ? VARIABLE_REAL_LENGTH * 2
-      : VARIABLE_REAL_LENGTH;
+      ? FLOATING_POINT_REAL_LENGTH * 2
+      : FLOATING_POINT_REAL_LENGTH;
 
     if ($list_length * $number_length + 2 > strlen($data)) {
       throw new \OutOfBoundsException(
@@ -29,7 +30,7 @@ class ListVariable extends Variable implements \ArrayAccess {
     }
 
     $list->setElements(array_map(
-      array(parent::class, 'floatingPointToNumber'),
+      array(SimpleNumber::class, 'fromFloatingPoint'),
       str_split(
         substr($data, 2, $list_length * $number_length),
         $number_length
@@ -70,7 +71,7 @@ class ListVariable extends Variable implements \ArrayAccess {
     $complex = false;
 
     foreach ($this->elements as $element) {
-      if ($element[1] !== null && $element[1] !== 0) {
+      if (!$element->isReal()) {
         $complex = true;
         break;
       }
@@ -91,11 +92,7 @@ class ListVariable extends Variable implements \ArrayAccess {
     return array_reduce(
       $this->elements,
       function($data, $element) use ($complex) {
-        return $data . parent::numberToFloatingPoint(
-          $element[0],
-          $element[1],
-          $complex
-        );
+        return $data . $element->toFloatingPoint($complex);
       },
       pack('v', count($this->elements))
     );
@@ -119,35 +116,18 @@ class ListVariable extends Variable implements \ArrayAccess {
     self::validateIndex($index);
 
     while (count($this->elements) < $index) {
-      $this->elements[] = array(0, null);
+      $this->elements[] = new SimpleNumber(0);
     }
 
     if (is_string($value)) {
-      $this->elements[$index] = parent::expressionToNumber($value);
+      $this->elements[$index] = SimpleNumber::fromExpression($value);
     } else if (is_numeric($value) || $value === null) {
-      $this->elements[$index] = array($value, null);
-    } else if (is_array($value)) {
-      if (
-        count($value) > 2 ||
-            count($value) >= 1 &&
-            !is_numeric($value[0]) &&
-            $value[0] !== null ||
-            count($value) >= 2 &&
-            !is_numeric($value[1]) &&
-            $value[1] !== null
-      ) {
-        throw new \InvalidArgumentException(
-          "List element must be a number or tuple of real and imaginary components"
-        );
-      }
-
-      $this->elements[$index] = array(
-        isset($value[0]) ? $value[0] : null,
-        isset($value[1]) ? $value[1] : null
-      );
+      $this->elements[$index] = new SimpleNumber($value);
+    } else if (is_a($value, SimpleNumber::class)) {
+      $this->elements[$index] = $value;
     } else {
       throw new \InvalidArgumentException(
-        "List element must be a number or tuple of real and imaginary components"
+        "List element must be a number, expression, or SimpleNumber"
       );
     }
   }
@@ -166,7 +146,7 @@ class ListVariable extends Variable implements \ArrayAccess {
   }
 
   /**
-   * Returns the elements as component tuples.
+   * Returns the elements as `SimpleNumber`s.
    */
   public function getElements() {
     return $this->elements;
@@ -178,15 +158,15 @@ class ListVariable extends Variable implements \ArrayAccess {
   public function getElementsAsExpressions() {
     return array_map(
       function($element) {
-        return parent::numberToExpression($element[0], $element[1]);
+        return $element->toExpression();
       },
       $this->elements
     );
   }
 
   /**
-   * Sets the elements as numbers, component tuples, or evaluable expressions.
-   * @param array<array<number>|number|string> $elements The elements to set.
+   * Sets the elements as numbers, `SimpleNumber`s, or evaluable expressions.
+   * @param array<SimpleNumber|number|string> $elements The elements to set.
    */
   public function setElements($elements) {
     unset($this[0]);

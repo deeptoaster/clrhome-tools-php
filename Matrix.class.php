@@ -1,6 +1,7 @@
 <?php
 namespace ClrHome;
 
+include_once(__DIR__ . '/SimpleNumber.class.php');
 include_once(__DIR__ . '/Variable.class.php');
 
 /**
@@ -21,7 +22,8 @@ class Matrix extends Variable implements \ArrayAccess {
     $row_count = ord($data[1]);
 
     if (
-      $column_count * $row_count * VARIABLE_REAL_LENGTH + 2 > strlen($data)
+      $column_count * $row_count * FLOATING_POINT_REAL_LENGTH + 2 >
+          strlen($data)
     ) {
       throw new \OutOfBoundsException(
         'Matrix length exceeds variable data length'
@@ -30,11 +32,15 @@ class Matrix extends Variable implements \ArrayAccess {
 
     $matrix->setElements(array_chunk(array_map(
       function($element) {
-        return parent::floatingPointToNumber($element)[0];
+        return SimpleNumber::fromFloatingPoint($element)->real;
       },
       str_split(
-        substr($data, 2, $column_count * $row_count * VARIABLE_REAL_LENGTH),
-        VARIABLE_REAL_LENGTH
+        substr(
+          $data,
+          2,
+          $column_count * $row_count * FLOATING_POINT_REAL_LENGTH
+        ),
+        FLOATING_POINT_REAL_LENGTH
       )
     ), $column_count));
 
@@ -75,9 +81,9 @@ class Matrix extends Variable implements \ArrayAccess {
 
     return array_reduce($this->elements, function($data, $row) {
       return array_reduce($row, function($data, $element) {
-        return $data . parent::numberToFloatingPoint($element);
+        return $data . (new SimpleNumber($element))->toFloatingPoint();
       }, $data);
-    }, pack('C2', count($this->elements[1]), count($this->elements)));
+    }, pack('C2', count($this->elements[0]), count($this->elements)));
   }
 
   public function offsetExists($index) {
@@ -110,7 +116,8 @@ class Matrix extends Variable implements \ArrayAccess {
     }
 
     if (is_string($value)) {
-      $this->elements[$row][$column] = parent::expressionToNumber($value)[0];
+      $this->elements[$row][$column] =
+          SimpleNumber::fromExpression($value)->real;
     } else if (is_numeric($value) || $value === null) {
       $this->elements[$row][$column] = $value;
     } else {
@@ -141,19 +148,10 @@ class Matrix extends Variable implements \ArrayAccess {
   }
 
   /**
-   * Returns the elements in row-major order as component tuples.
+   * Returns the elements in row-major order.
    */
   public function getElements() {
     return $this->elements;
-  }
-
-  /**
-   * Returns the elements in row-major order as evaluable expressions.
-   */
-  public function getElementsAsExpressions() {
-    return array_map(function($row) {
-      return array_map(array(parent::class, 'numberToExpression'), $row);
-    }, $this->elements);
   }
 
   /**
