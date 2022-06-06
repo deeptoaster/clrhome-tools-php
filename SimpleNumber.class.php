@@ -30,7 +30,7 @@ class SimpleNumber extends Immutable {
 
       switch ($character) {
         case 'e':
-          if ($number->real !== null || $number->imaginary !== null) {
+          if (!$number->isEmpty()) {
             $multiply = true;
           } else {
             $number = new self(M_E);
@@ -40,7 +40,7 @@ class SimpleNumber extends Immutable {
 
           break;
         case 'i':
-          if ($number->real !== null || $number->imaginary !== null) {
+          if (!$number->isEmpty()) {
             $multiply = true;
           } else {
             $number = new self(0, 1);
@@ -50,7 +50,7 @@ class SimpleNumber extends Immutable {
 
           break;
         case '(':
-          if ($number->real !== null || $number->imaginary !== null) {
+          if (!$number->isEmpty()) {
             $multiply = true;
           } else {
             $precedence -= 3;
@@ -60,7 +60,7 @@ class SimpleNumber extends Immutable {
 
           break;
         case ')':
-          if ($number->real === null && $number->imaginary === null) {
+          if ($number->isEmpty()) {
             throw new \UnexpectedValueException('Operand expected before )');
           }
 
@@ -83,7 +83,7 @@ class SimpleNumber extends Immutable {
           break;
         default:
           if (substr($expression, $token_start, 2) === 'pi') {
-            if ($number->real !== null || $number->imaginary !== null) {
+            if (!$number->isEmpty()) {
               $multiply = true;
             } else {
               $number = new self(M_PI);
@@ -91,13 +91,13 @@ class SimpleNumber extends Immutable {
               $valid = true;
             }
           } else if (preg_match(
-            '/\G([+-]?)(\d*\.)?\d+(e[+-]?(\d+))?/',
+            '/\G([+-]?)(([01]+)b|%([01]+)|([0-7]+)o|([\da-f]+)h|\$([\da-f]+)|((\d*\.)?\d+(e[+-]?(\d+))?))/i',
             $expression,
             $matches,
             null,
             $token_start
           )) {
-            if ($number->real !== null || $number->imaginary !== null) {
+            if (!$number->isEmpty()) {
               if ($matches[1] === '') {
                 throw new \UnexpectedValueException(
                   "Operator expected at $matches[0]"
@@ -107,7 +107,20 @@ class SimpleNumber extends Immutable {
               break;
             }
 
-            $number = new self($matches[0]);
+            $number = new self((
+              $matches[3] !== '' || @$matches[4]
+                ? bindec($matches[3] . @$matches[4])
+                : (
+                  $matches[5] !== ''
+                    ? octdec($matches[5])
+                    : (
+                      $matches[6] !== '' || @$matches[7]
+                        ? hexdec($matches[6] . @$matches[7])
+                        : $matches[8]
+                    )
+                )
+            ) * ($matches[1] === '-' ? -1 : 1));
+
             $token_start += strlen($matches[0]);
             $valid = true;
           }
@@ -189,6 +202,10 @@ class SimpleNumber extends Immutable {
       $unpacked['exponent1'] & 0x80 !== 0 ? -$real : $real,
       $imaginary_as_real->real
     );
+  }
+
+  final public function isEmpty() {
+    return $this->real === null && $this->imaginary === null;
   }
 
   final public function isReal() {
