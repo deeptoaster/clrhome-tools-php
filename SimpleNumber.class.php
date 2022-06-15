@@ -21,14 +21,24 @@ class SimpleNumber extends Immutable {
 
   final public static function from(
     $value,
-    $substitutions = null,
+    $substitutions = array(),
     $use_caret_as_xor = false
   ) {
     if (is_string($value)) {
-      return self::fromExpression($value, $substitutions, $use_caret_as_xor);
+      return self::fromExpression($value, array_merge(
+        array(
+          'PI' => new self(M_PI),
+          'E' => new self(M_E),
+          'I' => new self(0, 1)
+        ),
+        array_combine(
+          array_map('strtoupper', array_keys($substitutions)),
+          array_values($substitutions)
+        )
+      ), $use_caret_as_xor);
     } else if (is_numeric($value) || $value === null) {
-      return new SimpleNumber($value);
-    } else if (is_a($value, SimpleNumber::class)) {
+      return new self($value);
+    } else if (is_a($value, self::class)) {
       return $value;
     } else {
       throw new \InvalidArgumentException(sprintf(
@@ -84,6 +94,7 @@ class SimpleNumber extends Immutable {
       '-' => 6,
       '<' => 9,
       '>' => 9,
+      '=' => 10,
       '&' => 11,
       '|' => 13
     );
@@ -93,25 +104,6 @@ class SimpleNumber extends Immutable {
     }
 
     $binary_operator_pattern = self::pregQuoteKeys($binary_operators);
-
-    $substitutions = array_merge(
-      array(
-        'pi' => new self(M_PI),
-        'e' => new self(M_E),
-        'i' => new self(0, 1)
-      ),
-      $substitutions !== null
-        ? array_map(array(self::class, 'from'), $substitutions)
-        : array()
-    );
-
-    array_multisort(
-      array_map('strlen', array_keys($substitutions)),
-      SORT_DESC,
-      $substitutions
-    );
-
-    $substitution_pattern = self::pregQuoteKeys($substitutions);
     $number = new self();
     $precedence = 0;
     $stack = array();
@@ -154,7 +146,7 @@ class SimpleNumber extends Immutable {
         $token_start += 1;
         $valid = true;
       } else if (preg_match(
-        '/\G(([01]+)b|%([01]+)|([0-7]+)o|([\da-f]+)h|\$([\da-f]+)|((\d*\.)?\d+(e[+-]?(\d+))?))/i',
+        '/\G(([01]+)b|%([01]+)|([0-7]+)o|([\da-f]+)h|\$([\da-f]+)|(\'\\\\\'\'|\'\\\\\\\\\'|\'[^\\\\\']\')|((\d*\.)?\d+(e[+-]?(\d+))?))/i',
         $expression,
         $matches,
         null,
@@ -169,15 +161,15 @@ class SimpleNumber extends Immutable {
         }
 
         $number = new self(
-          $matches[2] !== '' || @$matches[3]
+          $matches[2] !== '' || $matches[3] !== ''
             ? bindec($matches[2] . @$matches[3])
             : (
               $matches[4] !== ''
                 ? octdec($matches[4])
                 : (
-                  $matches[5] !== '' || @$matches[6]
+                  $matches[5] !== '' || $matches[6] !== ''
                     ? hexdec($matches[5] . @$matches[6])
-                    : $matches[7]
+                    : ($matches[7] !== '' ? ord($matches[7][1]) : $matches[8])
                 )
             )
         );
@@ -185,7 +177,7 @@ class SimpleNumber extends Immutable {
         $token_start += strlen($matches[0]);
         $valid = true;
       } else if (preg_match(
-        $substitution_pattern,
+        '/\G\$|\G\w+/',
         $expression,
         $matches,
         null,
@@ -194,7 +186,16 @@ class SimpleNumber extends Immutable {
         if (!$number->isEmpty()) {
           $implicit_multiplication = true;
         } else {
-          $number = $substitutions[$matches[0]];
+          $key = strtoupper($matches[0]);
+
+          if (!array_key_exists($key, $substitutions)) {
+            throw new \UnexpectedValueException("Undefined value $matches[0]");
+          }
+
+          $value = $substitutions[$key];
+          $number = is_string($value)
+            ? self::fromExpression($value, $substitutions, $use_caret_as_xor)
+            : self::from($value);
           $token_start += strlen($matches[0]);
           $valid = true;
         }
@@ -208,6 +209,9 @@ class SimpleNumber extends Immutable {
         $token_start
       )) {
         $operator = $matches[0];
+      } else if (preg_match('/\s/', $character)) {
+        $token_start += 1;
+        $valid = true;
       }
 
       if ($implicit_multiplication) {
@@ -358,6 +362,7 @@ class SimpleNumber extends Immutable {
       case '>=':
         return new self($this->real >= $operand->real);
       case '==':
+      case '=':
         return new self($this->real == $operand->real);
       case '!=':
         return new self($this->real != $operand->real);
