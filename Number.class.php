@@ -74,22 +74,11 @@ class Number extends Variable {
   }
 
   /**
-   * Returns the number as a `SimpleNumber`.
+   * Sets the number as a number, `SimpleNumber`, or evaluable expression.
+   * @param SimpleNumber|number|string The value to set.
    */
-  public function set($number) {
-    if (!is_a($number, SimpleNumber::class)) {
-      throw new \InvalidArgumentException('Number must be a SimpleNumber');
-    }
-
-    $this->number = $number;
-  }
-
-  /**
-   * Sets the number as an evaluable expression.
-   * @param string $expression The expression to evaluate.
-   */
-  public function setAsExpression($expression) {
-    $this->number = SimpleNumber::fromExpression($expression);
+  public function set($value) {
+    $this->number = SimpleNumber::from($value);
   }
 
   /**

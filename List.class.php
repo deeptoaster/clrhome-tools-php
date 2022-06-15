@@ -119,17 +119,7 @@ class ListVariable extends Variable implements \ArrayAccess {
       $this->elements[] = new SimpleNumber(0);
     }
 
-    if (is_string($value)) {
-      $this->elements[$index] = SimpleNumber::fromExpression($value);
-    } else if (is_numeric($value) || $value === null) {
-      $this->elements[$index] = new SimpleNumber($value);
-    } else if (is_a($value, SimpleNumber::class)) {
-      $this->elements[$index] = $value;
-    } else {
-      throw new \InvalidArgumentException(
-        "List element must be a number, expression, or SimpleNumber"
-      );
-    }
+    $this->elements[$index] = SimpleNumber::from($value);
   }
 
   public function offsetUnset($index) {

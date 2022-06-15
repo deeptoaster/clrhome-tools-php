@@ -115,16 +115,7 @@ class Matrix extends Variable implements \ArrayAccess {
       }
     }
 
-    if (is_string($value)) {
-      $this->elements[$row][$column] =
-          SimpleNumber::fromExpression($value)->real;
-    } else if (is_numeric($value) || $value === null) {
-      $this->elements[$row][$column] = $value;
-    } else {
-      throw new \InvalidArgumentException(
-        "Matrix element must be a number"
-      );
-    }
+    $this->elements[$row][$column] = SimpleNumber::from($value)->real;
   }
 
   public function offsetUnset($index) {
@@ -155,8 +146,8 @@ class Matrix extends Variable implements \ArrayAccess {
   }
 
   /**
-   * Sets the elements as numbers or evaluable expressions.
-   * @param array<array<number|string>> $elements The elements to set.
+   * Sets the elements as numbers, `SimpleNumber`s, or evaluable expressions.
+   * @param array<array<SimpleNumber|number|string>> $elements The elements.
    */
   public function setElements($elements) {
     unset($this['0,0']);

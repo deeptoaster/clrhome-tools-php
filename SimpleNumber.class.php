@@ -2,6 +2,7 @@
 namespace ClrHome;
 
 define('ClrHome\FLOATING_POINT_REAL_LENGTH', 9);
+define('ClrHome\PARENTHESES_PRECEDENCE', 16);
 define('ClrHome\UNARY_OPERATOR_PRECEDENCE', 3);
 
 include_once(__DIR__ . '/common.php');
@@ -18,9 +19,50 @@ class SimpleNumber extends Immutable {
     $this->real = $real !== null ? (float)$real : null;
   }
 
-  final public static function fromExpression(
-    $expression,
+  final public static function from(
+    $value,
+    $substitutions = null,
     $use_caret_as_xor = false
+  ) {
+    if (is_string($value)) {
+      return self::fromExpression($value, $substitutions, $use_caret_as_xor);
+    } else if (is_numeric($value) || $value === null) {
+      return new SimpleNumber($value);
+    } else if (is_a($value, SimpleNumber::class)) {
+      return $value;
+    } else {
+      throw new \InvalidArgumentException(sprintf(
+        "Source must be a number, expression, or SimpleNumber, not %s",
+        gettype($value)
+      ));
+    }
+  }
+
+  final public static function fromFloatingPoint($packed) {
+    if (ord($packed[0]) & 0x02 !== 0) {
+      return new self(null, null);
+    }
+
+    $imaginary_as_real =
+        strlen($packed) > FLOATING_POINT_REAL_LENGTH &&
+        (ord($packed[FLOATING_POINT_REAL_LENGTH]) & 0x0c) !== 0
+      ? self::fromFloatingPoint(substr($packed, FLOATING_POINT_REAL_LENGTH))
+      : new self(null);
+    $unpacked = unpack('C2exponent/H14mantissa', $packed);
+    $real =
+        ($unpacked['mantissa'][0] . '.' . substr($unpacked['mantissa'], 1)) *
+        pow(10, $unpacked['exponent2'] - 0x80);
+
+    return new self(
+      $unpacked['exponent1'] & 0x80 !== 0 ? -$real : $real,
+      $imaginary_as_real->real
+    );
+  }
+
+  private static function fromExpression(
+    $expression,
+    $substitutions,
+    $use_caret_as_xor
   ) {
     $unary_operators = array('+', '-', '!', '~');
 
@@ -50,12 +92,26 @@ class SimpleNumber extends Immutable {
       $binary_operators['^'] = 12;
     }
 
-    $binary_operator_pattern = '/\G(' . implode('|', array_map(
-      'preg_quote',
-      array_keys($binary_operators),
-      array_fill(0, count($binary_operators), '/')
-    )) . ')/';
+    $binary_operator_pattern = self::pregQuoteKeys($binary_operators);
 
+    $substitutions = array_merge(
+      array(
+        'pi' => new self(M_PI),
+        'e' => new self(M_E),
+        'i' => new self(0, 1)
+      ),
+      $substitutions !== null
+        ? array_map(array(self::class, 'from'), $substitutions)
+        : array()
+    );
+
+    array_multisort(
+      array_map('strlen', array_keys($substitutions)),
+      SORT_DESC,
+      $substitutions
+    );
+
+    $substitution_pattern = self::pregQuoteKeys($substitutions);
     $number = new self();
     $precedence = 0;
     $stack = array();
@@ -67,115 +123,91 @@ class SimpleNumber extends Immutable {
       $valid = false;
       $character = $expression[$token_start];
 
-      switch ($character) {
-        case 'e':
-          if (!$number->isEmpty()) {
-            $implicit_multiplication = true;
-          } else {
-            $number = new self(M_E);
-            $token_start += 1;
-            $valid = true;
-          }
-
-          break;
-        case 'i':
-          if (!$number->isEmpty()) {
-            $implicit_multiplication = true;
-          } else {
-            $number = new self(0, 1);
-            $token_start += 1;
-            $valid = true;
-          }
-
-          break;
-        case '(':
-          if (!$number->isEmpty()) {
-            $implicit_multiplication = true;
-          } else {
-            $precedence -= 3;
-            $token_start += 1;
-            $valid = true;
-          }
-
-          break;
-        case ')':
-          if ($number->isEmpty()) {
-            throw new \UnexpectedValueException('Operand expected before )');
-          }
-
-          $precedence += 3;
-
-          while (
-            count($stack) !== 0 &&
-                $precedence >= $stack[count($stack) - 1]['precedence']
-          ) {
-            $operation = array_pop($stack);
-
-            $number = $operation['number']->evaluateOperation(
-              $operation['operator'],
-              $number,
-              $use_caret_as_xor
-            );
-          }
-
+      if ($character === '(') {
+        if (!$number->isEmpty()) {
+          $implicit_multiplication = true;
+        } else {
+          $precedence -= PARENTHESES_PRECEDENCE;
           $token_start += 1;
           $valid = true;
+        }
+      } else if ($character === ')') {
+        if ($number->isEmpty()) {
+          throw new \UnexpectedValueException('Operand expected before )');
+        }
+
+        $precedence += PARENTHESES_PRECEDENCE;
+
+        while (
+          count($stack) !== 0 &&
+              $precedence >= $stack[count($stack) - 1]['precedence']
+        ) {
+          $operation = array_pop($stack);
+
+          $number = $operation['number']->evaluateOperation(
+            $operation['operator'],
+            $number,
+            $use_caret_as_xor
+          );
+        }
+
+        $token_start += 1;
+        $valid = true;
+      } else if (preg_match(
+        '/\G(([01]+)b|%([01]+)|([0-7]+)o|([\da-f]+)h|\$([\da-f]+)|((\d*\.)?\d+(e[+-]?(\d+))?))/i',
+        $expression,
+        $matches,
+        null,
+        $token_start
+      )) {
+        if (!$number->isEmpty()) {
+          throw new \UnexpectedValueException(
+            "Operator expected at $matches[0]"
+          );
+
           break;
-        default:
-          if (substr($expression, $token_start, 2) === 'pi') {
-            if (!$number->isEmpty()) {
-              $implicit_multiplication = true;
-            } else {
-              $number = new self(M_PI);
-              $token_start += 2;
-              $valid = true;
-            }
-          } else if (preg_match(
-            '/\G([+-]?)(([01]+)b|%([01]+)|([0-7]+)o|([\da-f]+)h|\$([\da-f]+)|((\d*\.)?\d+(e[+-]?(\d+))?))/i',
-            $expression,
-            $matches,
-            null,
-            $token_start
-          )) {
-            if (!$number->isEmpty()) {
-              if ($matches[1] === '') {
-                throw new \UnexpectedValueException(
-                  "Operator expected at $matches[0]"
-                );
-              }
+        }
 
-              break;
-            }
-
-            $number = new self((
-              $matches[3] !== '' || @$matches[4]
-                ? bindec($matches[3] . @$matches[4])
+        $number = new self(
+          $matches[2] !== '' || @$matches[3]
+            ? bindec($matches[2] . @$matches[3])
+            : (
+              $matches[4] !== ''
+                ? octdec($matches[4])
                 : (
-                  $matches[5] !== ''
-                    ? octdec($matches[5])
-                    : (
-                      $matches[6] !== '' || @$matches[7]
-                        ? hexdec($matches[6] . @$matches[7])
-                        : $matches[8]
-                    )
+                  $matches[5] !== '' || @$matches[6]
+                    ? hexdec($matches[5] . @$matches[6])
+                    : $matches[7]
                 )
-            ) * ($matches[1] === '-' ? -1 : 1));
+            )
+        );
 
-            $token_start += strlen($matches[0]);
-            $valid = true;
-          } else if (in_array($character, $unary_operators)) {
-            $operator = $character;
-          } else if (preg_match(
-            $binary_operator_pattern,
-            $expression,
-            $matches,
-            null,
-            $token_start
-          )) {
-            $operator = $matches[0];
-          }
-
-          break;
+        $token_start += strlen($matches[0]);
+        $valid = true;
+      } else if (preg_match(
+        $substitution_pattern,
+        $expression,
+        $matches,
+        null,
+        $token_start
+      )) {
+        if (!$number->isEmpty()) {
+          $implicit_multiplication = true;
+        } else {
+          $number = $substitutions[$matches[0]];
+          $token_start += strlen($matches[0]);
+          $valid = true;
+        }
+      } else if (in_array($character, $unary_operators)) {
+        $operator = $character;
+      } else if (preg_match(
+        $binary_operator_pattern,
+        $expression,
+        $matches,
+        null,
+        $token_start
+      )) {
+        $operator = $matches[0];
       }
 
       if ($implicit_multiplication) {
@@ -191,7 +223,7 @@ class SimpleNumber extends Immutable {
           }
 
           $number = new self(0);
-          $operator_precedence = UNARY_OPERATOR_PRECEDENCE;
+          $operator_precedence = $precedence + UNARY_OPERATOR_PRECEDENCE;
         } else {
           if (!array_key_exists($operator, $binary_operators)) {
             throw new \UnexpectedValueException(
@@ -199,7 +231,7 @@ class SimpleNumber extends Immutable {
             );
           }
 
-          $operator_precedence = $binary_operators[$operator];
+          $operator_precedence = $precedence + $binary_operators[$operator];
         }
 
         while (
@@ -244,25 +276,12 @@ class SimpleNumber extends Immutable {
     return $number;
   }
 
-  final public static function fromFloatingPoint($packed) {
-    if (ord($packed[0]) & 0x02 !== 0) {
-      return new self(null, null);
-    }
-
-    $imaginary_as_real =
-        strlen($packed) > FLOATING_POINT_REAL_LENGTH &&
-        (ord($packed[FLOATING_POINT_REAL_LENGTH]) & 0x0c) !== 0
-      ? self::fromFloatingPoint(substr($packed, FLOATING_POINT_REAL_LENGTH))
-      : new self(null);
-    $unpacked = unpack('C2exponent/H14mantissa', $packed);
-    $real =
-        ($unpacked['mantissa'][0] . '.' . substr($unpacked['mantissa'], 1)) *
-        pow(10, $unpacked['exponent2'] - 0x80);
-
-    return new self(
-      $unpacked['exponent1'] & 0x80 !== 0 ? -$real : $real,
-      $imaginary_as_real->real
-    );
+  private static function pregQuoteKeys($options) {
+    return '/\G(' . implode('|', array_map(
+      'preg_quote',
+      array_keys($options),
+      array_fill(0, count($options), '/')
+    )) . ')/';
   }
 
   final public function isEmpty() {

@@ -56,8 +56,7 @@ No fancy package managers here.
     ?>
 
 A simple expression engine supporting real and complex numbers is built into
-the library. To interface with it, use the `getAsExpression` and
-`setAsExpression` methods.
+the library. To interface with it, use the `getAsExpression` and `set` methods.
 
 ## Quick Start: Pictures
 
