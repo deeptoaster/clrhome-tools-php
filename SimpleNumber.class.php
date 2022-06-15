@@ -2,6 +2,7 @@
 namespace ClrHome;
 
 define('ClrHome\FLOATING_POINT_REAL_LENGTH', 9);
+define('ClrHome\UNARY_OPERATOR_PRECEDENCE', 3);
 
 include_once(__DIR__ . '/common.php');
 
@@ -17,21 +18,59 @@ class SimpleNumber extends Immutable {
     $this->real = $real !== null ? (float)$real : null;
   }
 
-  final public static function fromExpression($expression) {
+  final public static function fromExpression(
+    $expression,
+    $use_caret_as_xor = false
+  ) {
+    $unary_operators = array('+', '-', '!', '~');
+
+    $binary_operators = array(
+      '<=>' => 8,
+      '<<' => 7,
+      '>>' => 7,
+      '<=' => 9,
+      '>=' => 9,
+      '==' => 10,
+      '!=' => 10,
+      '&&' => 14,
+      '||' => 15,
+      '^' => 4,
+      '*' => 5,
+      '/' => 5,
+      '%' => 5,
+      '+' => 6,
+      '-' => 6,
+      '<' => 9,
+      '>' => 9,
+      '&' => 11,
+      '|' => 13
+    );
+
+    if ($use_caret_as_xor) {
+      $binary_operators['^'] = 12;
+    }
+
+    $binary_operator_pattern = '/\G(' . implode('|', array_map(
+      'preg_quote',
+      array_keys($binary_operators),
+      array_fill(0, count($binary_operators), '/')
+    )) . ')/';
+
     $number = new self();
     $precedence = 0;
     $stack = array();
     $token_start = 0;
 
     while ($token_start !== strlen($expression)) {
-      $multiply = false;
+      $implicit_multiplication = false;
+      $operator = null;
       $valid = false;
       $character = $expression[$token_start];
 
       switch ($character) {
         case 'e':
           if (!$number->isEmpty()) {
-            $multiply = true;
+            $implicit_multiplication = true;
           } else {
             $number = new self(M_E);
             $token_start += 1;
@@ -41,7 +80,7 @@ class SimpleNumber extends Immutable {
           break;
         case 'i':
           if (!$number->isEmpty()) {
-            $multiply = true;
+            $implicit_multiplication = true;
           } else {
             $number = new self(0, 1);
             $token_start += 1;
@@ -51,7 +90,7 @@ class SimpleNumber extends Immutable {
           break;
         case '(':
           if (!$number->isEmpty()) {
-            $multiply = true;
+            $implicit_multiplication = true;
           } else {
             $precedence -= 3;
             $token_start += 1;
@@ -74,7 +113,8 @@ class SimpleNumber extends Immutable {
 
             $number = $operation['number']->evaluateOperation(
               $operation['operator'],
-              $number
+              $number,
+              $use_caret_as_xor
             );
           }
 
@@ -84,7 +124,7 @@ class SimpleNumber extends Immutable {
         default:
           if (substr($expression, $token_start, 2) === 'pi') {
             if (!$number->isEmpty()) {
-              $multiply = true;
+              $implicit_multiplication = true;
             } else {
               $number = new self(M_PI);
               $token_start += 2;
@@ -123,25 +163,44 @@ class SimpleNumber extends Immutable {
 
             $token_start += strlen($matches[0]);
             $valid = true;
+          } else if (in_array($character, $unary_operators)) {
+            $operator = $character;
+          } else if (preg_match(
+            $binary_operator_pattern,
+            $expression,
+            $matches,
+            null,
+            $token_start
+          )) {
+            $operator = $matches[0];
           }
 
           break;
       }
 
-      $operator_position = strpos('^*/+-', $character);
+      if ($implicit_multiplication) {
+        $operator = '*';
+      }
 
-      if ($multiply || !$valid && $operator_position !== false) {
-        if ($number->real === null && $number->imaginary === null) {
-          throw new \UnexpectedValueException(
-            "Operand expected at $character"
-          );
+      if ($operator !== null) {
+        if ($number->isEmpty()) {
+          if (!in_array($operator, $unary_operators)) {
+            throw new \UnexpectedValueException(
+              "Operand expected at $character"
+            );
+          }
+
+          $number = new self(0);
+          $operator_precedence = UNARY_OPERATOR_PRECEDENCE;
+        } else {
+          if (!array_key_exists($operator, $binary_operators)) {
+            throw new \UnexpectedValueException(
+              "Binary operator expected at $character"
+            );
+          }
+
+          $operator_precedence = $binary_operators[$operator];
         }
-
-        $operator_precedence = $precedence + (
-          $multiply
-            ? 1
-            : floor(($operator_position + 1) / 2)
-        );
 
         while (
           count($stack) !== 0 &&
@@ -151,18 +210,19 @@ class SimpleNumber extends Immutable {
 
           $number = $operation['number']->evaluateOperation(
             $operation['operator'],
-            $number
+            $number,
+            $use_caret_as_xor
           );
         }
 
         $stack[] = array(
           'number' => $number,
-          'operator' => $multiply ? '*' : $character,
+          'operator' => $operator,
           'precedence' => $operator_precedence
         );
 
         $number = new self();
-        $token_start += $multiply ? 0 : 1;
+        $token_start += $implicit_multiplication ? 0 : strlen($operator);
         $valid = true;
       }
 
@@ -176,7 +236,8 @@ class SimpleNumber extends Immutable {
 
       $number = $operation['number']->evaluateOperation(
         $operation['operator'],
-        $number
+        $number,
+        $use_caret_as_xor
       );
     }
 
@@ -251,7 +312,7 @@ class SimpleNumber extends Immutable {
 
     if ($this->imaginary !== null && $this->imaginary !== 0 || $forceComplex) {
       $packed .=
-          (new SimpleNumber($this->imaginary !== null ? $this->imaginary : 0))
+          (new self($this->imaginary !== null ? $this->imaginary : 0))
           ->toFloatingPoint();
       $packed[0] = chr(ord($packed[0]) | 0x0c);
       $packed[FLOATING_POINT_REAL_LENGTH] =
@@ -261,10 +322,36 @@ class SimpleNumber extends Immutable {
     return $packed;
   }
 
-  private function evaluateOperation($operator, $operand) {
+  private function evaluateOperation($operator, $operand, $use_caret_as_xor) {
     switch ($operator) {
+      case '<=>':
+        return new self(
+          $this->real < $operand->real
+            ? -1
+            : ($this->real > $operand->real ? 1 : 0)
+        );
+      case '<<':
+        return new self($this->real << $operand->real);
+      case '>>':
+        return new self($this->real >> $operand->real);
+      case '<=':
+        return new self($this->real <= $operand->real);
+      case '>=':
+        return new self($this->real >= $operand->real);
+      case '==':
+        return new self($this->real == $operand->real);
+      case '!=':
+        return new self($this->real != $operand->real);
+      case '&&':
+        return new self($this->real && $operand->real);
+      case '||':
+        return new self($this->real || $operand->real);
       case '^':
-        return new self(pow($this->real, $operand->real));
+        return new self(
+          $use_caret_as_xor
+            ? $this->real ^ $operand->real
+            : pow($this->real, $operand->real)
+        );
       case '*':
         return new self(
           $this->real * $operand->real -
@@ -286,6 +373,8 @@ class SimpleNumber extends Immutable {
                 $this->real * $operand->imaginary
           ) / $denominator
         );
+      case '%':
+        return new self($this->real % $operand->real);
       case '+':
         return new self(
           $this->real + $operand->real,
@@ -296,6 +385,14 @@ class SimpleNumber extends Immutable {
           $this->real - $operand->real,
           $this->imaginary - $operand->imaginary
         );
+      case '<':
+        return new self($this->real < $operand->real);
+      case '>':
+        return new self($this->real > $operand->real);
+      case '&':
+        return new self($this->real & $operand->real);
+      case '|':
+        return new self($this->real | $operand->real);
     }
   }
 }
