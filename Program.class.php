@@ -1,10 +1,7 @@
 <?php
 namespace ClrHome;
 
-define( 
-  'ClrHome\PROGRAM_CATALOG_URL',
-  'https://clrhome.org/catalog/catalog.xml'
-);
+define('ClrHome\PROGRAM_CATALOG_URL', 'https://clrhome.org/catalog/?alt=xml');
 
 include_once(__DIR__ . '/Variable.class.php');
 

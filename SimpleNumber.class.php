@@ -120,7 +120,7 @@ class SimpleNumber extends Immutable {
           $implicit_multiplication = true;
         } else {
           $precedence -= PARENTHESES_PRECEDENCE;
-          $token_start += 1;
+          $token_start++;
           $valid = true;
         }
       } else if ($character === ')') {
@@ -143,7 +143,7 @@ class SimpleNumber extends Immutable {
           );
         }
 
-        $token_start += 1;
+        $token_start++;
         $valid = true;
       } else if (preg_match(
         '/\G(([01]+)b|%([01]+)|([0-7]+)o|([\da-f]+)h|\$([\da-f]+)|(\'\\\\\'\'|\'\\\\\\\\\'|\'[^\\\\\']\')|((\d*\.)?\d+(e[+-]?(\d+))?))/i',
@@ -210,7 +210,7 @@ class SimpleNumber extends Immutable {
       )) {
         $operator = $matches[0];
       } else if (preg_match('/\s/', $character)) {
-        $token_start += 1;
+        $token_start++;
         $valid = true;
       }
 
