@@ -31,15 +31,16 @@ abstract class TiObject {
 
   abstract public function getType();
 
-  abstract public static function fromString($packed);
+  abstract public static function fromString($packed, $limit = -1);
 
   abstract public function toString($comment = '');
 
   /**
-   * Returns an array of Objects constructed from a TI file.
+   * Returns an array of TiObjects constructed from a TI file.
    * @param string $file_name The path of the file to read as a string.
+   * @param number $limit The maximum number of TiObjects to read.
    */
-  final public static function fromFile($file_name) {
+  final public static function fromFile($file_name, $limit = -1) {
     $packed = file_get_contents($file_name);
 
     if ($packed === false) {
@@ -48,7 +49,7 @@ abstract class TiObject {
       );
     }
 
-    return static::fromString($packed);
+    return static::fromString($packed, $limit);
   }
 
   /**

@@ -40,7 +40,7 @@ class Application extends TiObject implements \ArrayAccess {
    * Returns an application constructed from a string.
    * @param string $packed A string in TI flash file format.
    */
-  final public static function fromString($packed) {
+  final public static function fromString($packed, $limit = -1) {
     $unpacked = unpack(
       'a8file_signature/C2revision/C2/Cmonth/Cdate/nyear/Cname_length/a8name/x23/Cseries/Ctype/x24/Vcontents_length/a*contents',
       $packed

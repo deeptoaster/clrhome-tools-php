@@ -26,8 +26,9 @@ abstract class Variable extends TiObject {
   /**
    * Returns an array of variables constructed from a string.
    * @param string $packed A string in TI variable file format.
+   * @param number $limit The maximum number of TiObjects to read.
    */
-  final public static function fromString($packed) {
+  final public static function fromString($packed, $limit = -1) {
     switch (substr($packed, 0, 11)) {
       case VariableSeries::TI83 . "\x1a\x0a\x00":
         $series = VariableSeries::TI83;
@@ -43,7 +44,10 @@ abstract class Variable extends TiObject {
     $variables = array();
     $entry_start = 55;
 
-    while ($entry_start < $packed_length) {
+    while (
+      $entry_start < $packed_length &&
+          ($limit < 0 || count($variables) < $limit)
+    ) {
       $header_length = self::readWord($packed, $entry_start);
 
       if ($header_length !== 11 && $header_length !== 13) {
