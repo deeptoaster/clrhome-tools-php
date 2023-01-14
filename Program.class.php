@@ -99,7 +99,120 @@ class Program extends Variable {
    * Returns the program body detokenized to ASCII.
    */
   public function getBodyAsChars() {
-    return $this->detokenize($this->body);
+    if (!isset($this->catalog)) {
+      $this->initializeCatalog();
+    }
+
+    $namespace = $this->getLanguage() !== Language::BASIC
+      ? $this->catalog->getDocNamespaces()
+      : '';
+    $chars = '';
+    $line_chars = '';
+    $line_tokens = '';
+    $token_start = 0;
+
+    while ($token_start <= strlen($this->body)) {
+      if ($token_start < strlen($this->body)) {
+        list(
+          $token_sequence,
+          $token_chars
+        ) = $this->getNextToken($namespace, 'id', $this->body, $token_start);
+      }
+
+      if (
+        $token_start === strlen($this->body) || (string)$token_chars === "\n"
+      ) {
+        $normalized_line_chars = preg_replace('/(.)\\\\/', '$1', $line_chars);
+
+        if ($this->tokenize($normalized_line_chars) === $line_tokens) {
+          $chars .= $normalized_line_chars;
+        } else {
+          $slash_position = strpos($line_chars, '\\');
+
+          while (true) {
+            $test_end = strpos($line_chars . "\n", '\\', $slash_position + 2);
+
+            if ($test_end === false) {
+              $chars .= substr($line_chars, 0, $slash_position);
+              break;
+            }
+
+            $test_chars = substr($line_chars, 0, $slash_position) . substr(
+              $line_chars,
+              $slash_position + 1,
+              $test_end - $slash_position - 1
+            );
+
+            $test_tokens = $this->tokenize($test_chars);
+
+            if (
+              $test_tokens === substr($line_tokens, 0, strlen($test_tokens))
+            ) {
+              $slash_position = $test_end - 1;
+              $line_chars = $test_chars . substr($line_chars, $test_end);
+            } else {
+              $group_chars = substr($line_chars, 0, $slash_position + 1);
+              $group_tokens = $this->tokenize($group_chars);
+              $chars .= $group_chars;
+              $line_chars = substr($line_chars, $slash_position + 1);
+              $line_tokens = substr($line_tokens, strlen($group_tokens));
+              $slash_position = $test_end - $slash_position - 1;
+            }
+          }
+        }
+
+        $line_chars = '';
+        $line_tokens = '';
+
+        if ($token_start !== strlen($this->body)) {
+          $chars .= "\n";
+        }
+
+        $token_start++;
+      } else {
+        $line_chars .= "$token_chars\\";
+        $line_tokens .= $token_sequence;
+        $token_start += strlen($token_sequence);
+      }
+    }
+
+    return $chars;
+  }
+
+  /**
+   * Returns the program body detokenized to TI device characters.
+   */
+  public function getBodyAsTiChars() {
+    if (!isset($this->catalog)) {
+      $this->initializeCatalog();
+    }
+
+    $namespace = $this->getLanguage() !== Language::BASIC
+      ? $this->catalog->getDocNamespaces()
+      : '';
+    $chars = '';
+    $token_start = 0;
+
+    while ($token_start < strlen($this->body)) {
+      list(
+        $token_sequence,
+        $token_chars
+      ) = $this->getNextToken($namespace, 'chars', $this->body, $token_start);
+
+      $chars .= preg_replace_callback(
+        '/\\\\(x[\da-z]{2})?/',
+        function($matches) {
+          return strlen($matches[0]) === 4
+            ? chr(hexdec(substr($matches[1], 1)))
+            : '\\';
+        },
+        $token_chars
+      );
+
+      $token_start += strlen($token_sequence);
+    }
+
+    return $chars;
   }
 
   /**
@@ -159,102 +272,39 @@ class Program extends Variable {
     $this->language = Language::validate($language);
   }
 
-  private function detokenize($tokens) {
-    if (!isset($this->catalog)) {
-      $this->initializeCatalog();
-    }
+  private function getNextToken(
+    $namespace,
+    $attribute,
+    $tokens,
+    $token_start
+  ) {
+    $token_sequence = $tokens[$token_start];
+    $token = $this->catalog->children()[ord($token_sequence)];
 
-    $namespace = $this->getLanguage() !== Language::BASIC
-      ? $this->catalog->getDocNamespaces()
-      : '';
-    $chars = '';
-    $line_chars = '';
-    $line_tokens = '';
-    $token_start = 0;
-
-    while ($token_start <= strlen($tokens)) {
-      if ($token_start < strlen($tokens)) {
-        $token_sequence = $tokens[$token_start];
-        $token = $this->catalog->children()[ord($token_sequence)];
-
-        if ($token->getName() === 'table') {
-          if ($token_start + 1 === strlen($tokens)) {
-            throw new \UnexpectedValueException(
-              'Missing second byte in two-byte token sequence'
-            );
-          }
-
-          $second_byte = $tokens[$token_start + 1];
-          $token_sequence .= $second_byte;
-          $token = $token->children()[ord($second_byte)];
-        }
-
-        if ($token === null || $token['id'] === null) {
-          throw new \UnexpectedValueException(
-            'Unrecognized token ' . strtoupper(bin2hex($token_sequence))
-          );
-        }
-
-        $token_chars = $token->attributes($namespace)['id'];
-        $token_chars = $token_chars !== null ? $token_chars : $token['id'];
+    if ($token->getName() === 'table') {
+      if ($token_start + 1 === strlen($tokens)) {
+        throw new \UnexpectedValueException(
+          'Missing second byte in two-byte token sequence'
+        );
       }
 
-      if ($token_start === strlen($tokens) || (string)$token_chars === "\n") {
-        $yolo = str_replace('\\', '', $line_chars);
-
-        if ($this->tokenize($yolo) === $line_tokens) {
-          $chars .= $yolo;
-        } else {
-          $slash_position = strpos($line_chars, '\\');
-
-          while (true) {
-            $test_end = strpos($line_chars, '\\', $slash_position + 1);
-
-            if ($test_end === false) {
-              $chars .= substr($line_chars, 0, $slash_position);
-              break;
-            }
-
-            $test_chars = substr($line_chars, 0, $slash_position) . substr(
-              $line_chars,
-              $slash_position + 1,
-              $test_end - $slash_position - 1
-            );
-
-            $test_tokens = $this->tokenize($test_chars);
-
-            if (
-              $test_tokens === substr($line_tokens, 0, strlen($test_tokens))
-            ) {
-              $slash_position = $test_end - 1;
-              $line_chars = $test_chars . substr($line_chars, $test_end);
-            } else {
-              $group_chars = substr($line_chars, 0, $slash_position + 1);
-              $group_tokens = $this->tokenize($group_chars);
-              $chars .= $group_chars;
-              $line_chars = substr($line_chars, $slash_position + 1);
-              $line_tokens = substr($line_tokens, strlen($group_tokens));
-              $slash_position = $test_end - $slash_position - 1;
-            }
-          }
-        }
-
-        $line_chars = '';
-        $line_tokens = '';
-
-        if ($token_start !== strlen($tokens)) {
-          $chars .= "\n";
-        }
-
-        $token_start++;
-      } else {
-        $line_chars .= "$token_chars\\";
-        $line_tokens .= $token_sequence;
-        $token_start += strlen($token_sequence);
-      }
+      $second_byte = $tokens[$token_start + 1];
+      $token_sequence .= $second_byte;
+      $token = $token->children()[ord($second_byte)];
     }
 
-    return $chars;
+    if ($token === null || $token['id'] === null) {
+      throw new \UnexpectedValueException(
+        'Unrecognized token ' . strtoupper(bin2hex($token_sequence))
+      );
+    }
+
+    $token_chars = $token->attributes($namespace)[$attribute];
+
+    return array(
+      $token_sequence,
+      $token_chars !== null ? $token_chars : $token[$attribute]
+    );
   }
 
   private function initializeCatalog() {
@@ -328,9 +378,9 @@ class Program extends Variable {
       )['id'];
 
       if ($id !== null) {
-        $this->inverseCatalog[":$id"] = chr($token_index) . (
-          $subtoken_index !== null ? chr($subtoken_index) : ''
-        );
+        $this->inverseCatalog[(string)$id === '\\\\' ? ":\t" : ":$id"] =
+            chr($token_index) .
+            ($subtoken_index !== null ? chr($subtoken_index) : '');
       }
     }
   }
@@ -341,7 +391,12 @@ class Program extends Variable {
     }
 
     $tokens = '';
-    $chars = str_replace("\xe2\x86\x92", '->', $chars);
+
+    $chars = str_replace(
+      array("\xe2\x86\x92", '\\\\'),
+      array('->', "\t"),
+      $chars
+    );
 
     for (
       $group_start = 0;
@@ -349,7 +404,7 @@ class Program extends Variable {
       $group_start = $group_end + 1
     ) {
       $newline_position = strpos($chars, "\n", $group_start);
-      $slash_position = strpos($chars, "\\", $group_start);
+      $slash_position = strpos($chars, '\\', $group_start);
 
       $group_end = min(
         $newline_position !== false ? $newline_position : strlen($chars),
