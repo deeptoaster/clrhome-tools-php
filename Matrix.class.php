@@ -129,13 +129,13 @@ class Matrix extends Variable implements \ArrayAccess {
   }
 
   private static function validateIndex($index) {
-    if (!preg_match('/^(\d+),(\d+)$/', $index, $matches)) {
+    if (!preg_match('/^(\d+),(\d+)$/', $index, $match)) {
       throw new \OutOfRangeException(
         "Matrix index $index must be integers in the form row,column"
       );
     }
 
-    return array((int)$matches[1], (int)$matches[2]);
+    return array((int)$match[1], (int)$match[2]);
   }
 
   /**

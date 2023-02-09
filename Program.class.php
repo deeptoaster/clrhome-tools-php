@@ -201,9 +201,9 @@ class Program extends Variable {
 
       $chars .= preg_replace_callback(
         '/\\\\(x[\da-z]{2})?/',
-        function($matches) {
-          return strlen($matches[0]) === 4
-            ? chr(hexdec(substr($matches[1], 1)))
+        function($match) {
+          return strlen($match[0]) === 4
+            ? chr(hexdec(substr($match[1], 1)))
             : '\\';
         },
         $token_chars

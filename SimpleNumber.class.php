@@ -148,55 +148,51 @@ class SimpleNumber extends Immutable {
       } else if (preg_match(
         '/\G(([01]+)b|%([01]+)|([0-7]+)o|([\da-f]+)h|\$([\da-f]+)|(\'\\\\\'\'|\'\\\\\\\\\'|\'[^\\\\\']\')|((\d*\.)?\d+(e[+-]?(\d+))?))/i',
         $expression,
-        $matches,
+        $match,
         null,
         $token_start
       )) {
         if (!$number->isEmpty()) {
           throw new \UnexpectedValueException(
-            "Operator expected at $matches[0]"
+            "Operator expected at $match[0]"
           );
 
           break;
         }
 
         $number = new self(
-          $matches[2] !== '' || $matches[3] !== ''
-            ? bindec($matches[2] . @$matches[3])
+          $match[2] !== '' || $match[3] !== ''
+            ? bindec($match[2] . @$match[3])
             : (
-              $matches[4] !== ''
-                ? octdec($matches[4])
+              $match[4] !== ''
+                ? octdec($match[4])
                 : (
-                  $matches[5] !== '' || $matches[6] !== ''
-                    ? hexdec($matches[5] . @$matches[6])
-                    : ($matches[7] !== '' ? ord($matches[7][1]) : $matches[8])
+                  $match[5] !== '' || $match[6] !== ''
+                    ? hexdec($match[5] . @$match[6])
+                    : ($match[7] !== '' ? ord($match[7][1]) : $match[8])
                 )
             )
         );
 
-        $token_start += strlen($matches[0]);
+        $token_start += strlen($match[0]);
         $valid = true;
-      } else if (preg_match(
-        '/\G\$|\G\w+/',
-        $expression,
-        $matches,
-        null,
-        $token_start
-      )) {
+      } else if (
+        preg_match('/\G\$|\G\w+/', $expression, $match, null, $token_start)
+      ) {
         if (!$number->isEmpty()) {
           $implicit_multiplication = true;
         } else {
-          $key = strtoupper($matches[0]);
+          $key = strtoupper($match[0]);
 
           if (!array_key_exists($key, $substitutions)) {
-            throw new \UnexpectedValueException("Undefined value $matches[0]");
+            throw new \UnexpectedValueException("Undefined value $match[0]");
           }
 
           $value = $substitutions[$key];
           $number = is_string($value)
             ? self::fromExpression($value, $substitutions, $use_caret_as_xor)
             : self::from($value);
-          $token_start += strlen($matches[0]);
+          $token_start += strlen($match[0]);
           $valid = true;
         }
       } else if (in_array($character, $unary_operators)) {
@@ -204,11 +200,11 @@ class SimpleNumber extends Immutable {
       } else if (preg_match(
         $binary_operator_pattern,
         $expression,
-        $matches,
+        $match,
         null,
         $token_start
       )) {
-        $operator = $matches[0];
+        $operator = $match[0];
       } else if (preg_match('/\s/', $character)) {
         $token_start++;
         $valid = true;
